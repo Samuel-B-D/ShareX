@@ -26,6 +26,7 @@
 #nullable disable
 
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using ShareX.HelpersLib;
 using System.Net.Http.Headers;
 using System.Text;
@@ -62,25 +63,26 @@ namespace ShareX.Tools
             {
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
-                var payload = new
+                // Built with JObject instead of serializing anonymous types through reflection (trimming/NativeAOT safe).
+                JObject payload = new JObject
                 {
-                    model = this.model,
-                    messages = new[]
+                    ["model"] = this.model,
+                    ["messages"] = new JArray
                     {
-                        new
+                        new JObject
                         {
-                            role = "user",
-                            content = new object[]
+                            ["role"] = "user",
+                            ["content"] = new JArray
                             {
-                                new { type = "text", text = prompt },
-                                new { type = "image_url", image_url = new { url = $"data:image/png;base64,{base64Image}" } }
+                                new JObject { ["type"] = "text", ["text"] = prompt },
+                                new JObject { ["type"] = "image_url", ["image_url"] = new JObject { ["url"] = $"data:image/png;base64,{base64Image}" } }
                             }
                         }
                     },
-                    max_tokens = 1024
+                    ["max_tokens"] = 1024
                 };
 
-                string jsonPayload = JsonConvert.SerializeObject(payload);
+                string jsonPayload = payload.ToString(Formatting.None);
                 StringContent content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
                 const string url = "https://openrouter.ai/api/v1/chat/completions";
@@ -90,8 +92,9 @@ namespace ShareX.Tools
 
                 if (response.IsSuccessStatusCode)
                 {
-                    dynamic responseObject = JsonConvert.DeserializeObject(responseString);
-                    return responseObject.choices[0].message.content;
+                    // JObject instead of dynamic: the C# runtime binder is not supported under NativeAOT.
+                    JObject responseObject = JObject.Parse(responseString);
+                    return (string)responseObject["choices"][0]["message"]["content"];
                 }
                 else
                 {

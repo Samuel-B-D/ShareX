@@ -114,11 +114,11 @@ namespace ShareX.HelpersLib
 
         public static int GetIndex(this Enum value)
         {
-            Array values = Enum.GetValues(value.GetType());
+            Enum[] values = Helpers.GetEnumValues(value.GetType());
             return Array.IndexOf(values, value);
         }
 
-        public static IEnumerable<T> GetFlags<T>(this T value) where T : Enum
+        public static IEnumerable<T> GetFlags<T>(this T value) where T : struct, Enum
         {
             return Helpers.GetEnums<T>().Where(x => Convert.ToUInt64(x) != 0 && value.HasFlag(x));
         }
@@ -158,16 +158,16 @@ namespace ShareX.HelpersLib
 
         public static T Next<T>(this Enum value)
         {
-            Array values = Enum.GetValues(value.GetType());
+            Enum[] values = Helpers.GetEnumValues(value.GetType());
             int i = Array.IndexOf(values, value) + 1;
-            return i == values.Length ? (T)values.GetValue(0) : (T)values.GetValue(i);
+            return i == values.Length ? (T)(object)values[0] : (T)(object)values[i];
         }
 
         public static T Previous<T>(this Enum value)
         {
-            Array values = Enum.GetValues(value.GetType());
+            Enum[] values = Helpers.GetEnumValues(value.GetType());
             int i = Array.IndexOf(values, value) - 1;
-            return i == -1 ? (T)values.GetValue(values.Length - 1) : (T)values.GetValue(i);
+            return i == -1 ? (T)(object)values[values.Length - 1] : (T)(object)values[i];
         }
     }
 }

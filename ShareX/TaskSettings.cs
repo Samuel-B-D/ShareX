@@ -35,6 +35,7 @@ using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Linq;
 
@@ -457,6 +458,11 @@ namespace ShareX
         #region Upload / File naming
 
         public bool UseCustomTimeZone = false;
+        // Newtonsoft.Json (de)serializes TimeZoneInfo through ISerializable and needs the non-public
+        // (SerializationInfo, StreamingContext) constructors, which trimming removes from System.Private.CoreLib.
+        [DynamicDependency(DynamicallyAccessedMemberTypes.NonPublicConstructors, typeof(TimeZoneInfo))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.NonPublicConstructors, typeof(TimeZoneInfo.AdjustmentRule))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.NonPublicConstructors, typeof(TimeZoneInfo.TransitionTime))]
         public TimeZoneInfo CustomTimeZone = TimeZoneInfo.Utc;
         public string NameFormatPattern = "%ra{10}";
         public string NameFormatPatternActiveWindow = "%pn_%ra{10}";

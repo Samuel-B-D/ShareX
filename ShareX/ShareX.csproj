@@ -12,6 +12,29 @@
       Without it, the first region capture and other first-time actions are noticeably slower than later ones.
     -->
     <PublishReadyToRun>true</PublishReadyToRun>
+
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <SelfContained>true</SelfContained>
+    <PublishAot>true</PublishAot>
+    <PublishTrimmed>true</PublishTrimmed>
+    <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
+    <OptimizationPreference>Speed</OptimizationPreference>
+    <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+
+    <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
+    <UseFastDeployment>false</UseFastDeployment>
+    <RunAOTCompilation>true</RunAOTCompilation>
+    <!-- ShareX ships translations and switches CultureInfo at runtime; invariant mode makes GetCultureInfo("fr-FR") throw. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <StripSymbols>true</StripSymbols>
+    <TrimMode>link</TrimMode>
+    <!--
+      Trimmed apps default DefaultValueAttribute.IsSupported to false, which turns [DefaultValue(typeof(Color), "Red")]
+      into a null value. ShareX applies those defaults through ApplyDefaultPropertyValues (image effects, gradients, ...).
+    -->
+    <_DefaultValueAttributeSupport>true</_DefaultValueAttributeSupport>
   </PropertyGroup>
   <!--
     Precompile only ShareX assemblies, which CI signs after publishing.
@@ -26,6 +49,30 @@
       <PublishReadyToRunExclude Include="@(_ThirdPartyReadyToRunAssembly->'%(Filename)%(Extension)')" />
     </ItemGroup>
   </Target>
+  <ItemGroup>
+    <!--
+      Keep every type and member of the ShareX assemblies when trimming.
+      These assemblies are driven by reflection that cannot be statically annotated:
+      - Newtonsoft.Json walks the whole settings object graph (ApplicationConfig, TaskSettings, UploadersConfig, ...)
+        and resolves image effects by type name (TypeNameHandling.Auto + KnownTypesSerializationBinder).
+      - Uploader services, custom uploader functions and image effects are discovered with Assembly.GetTypes().
+      - Settings pages are generated from PropertyInfo/TypeDescriptor metadata.
+      - 22 windows use Avalonia reflection bindings (x:CompileBindings="False").
+      Framework and third-party assemblies are still trimmed.
+    -->
+    <TrimmerRootAssembly Include="ShareX" />
+    <TrimmerRootAssembly Include="ShareX.Avalonia" />
+    <TrimmerRootAssembly Include="ShareX.HelpersLib" />
+    <TrimmerRootAssembly Include="ShareX.HistoryLib" />
+    <TrimmerRootAssembly Include="ShareX.Icons" />
+    <TrimmerRootAssembly Include="ShareX.ImageEditor" />
+    <TrimmerRootAssembly Include="ShareX.ImageEffectsLib" />
+    <TrimmerRootAssembly Include="ShareX.PhotoEditor" />
+    <TrimmerRootAssembly Include="ShareX.ScreenCaptureLib" />
+    <TrimmerRootAssembly Include="ShareX.ScreenRecordingLib" />
+    <TrimmerRootAssembly Include="ShareX.Tools" />
+    <TrimmerRootAssembly Include="ShareX.UploadersLib" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Newtonsoft.Json" />

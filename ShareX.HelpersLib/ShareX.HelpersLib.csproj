@@ -8,10 +8,16 @@
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="SkiaSharp" />
-  </ItemGroup>
-  <ItemGroup>
-    <!-- Existing Windows printing and shell icon interop still require System.Drawing.Common. -->
-    <FrameworkReference Include="Microsoft.WindowsDesktop.App" />
+    <!--
+      Existing Windows printing and shell icon interop still require System.Drawing.Common.
+      Referenced as packages instead of the Microsoft.WindowsDesktop.App framework: the framework drags WPF
+      (including the C++/CLI DirectWriteForwarder assembly) into the NativeAOT image, which fails at startup
+      with a <CrtImplementationDetails>.ModuleLoadException.
+    -->
+    <PackageReference Include="System.Drawing.Common" />
+    <PackageReference Include="Microsoft.Win32.SystemEvents" />
+    <PackageReference Include="System.Windows.Extensions" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ShareX.Avalonia\ShareX.Avalonia.csproj" />

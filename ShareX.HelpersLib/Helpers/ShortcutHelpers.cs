@@ -101,12 +101,7 @@ namespace ShareX.HelpersLib
             {
                 DeleteShortcut(shortcutPath);
 
-                WshShell shell = new WshShell();
-                IWshShortcut shortcut = ((IWshShell)shell).CreateShortcut(shortcutPath);
-                shortcut.TargetPath = targetPath;
-                shortcut.Arguments = arguments;
-                shortcut.WorkingDirectory = Path.GetDirectoryName(targetPath);
-                shortcut.Save();
+                ShellLink.Save(shortcutPath, targetPath, arguments, Path.GetDirectoryName(targetPath));
 
                 return true;
             }
@@ -116,9 +111,7 @@ namespace ShareX.HelpersLib
 
         private static string GetShortcutTargetPath(string shortcutPath)
         {
-            WshShell shell = new WshShell();
-            IWshShortcut shortcut = ((IWshShell)shell).CreateShortcut(shortcutPath);
-            return shortcut.TargetPath;
+            return ShellLink.GetTargetPath(shortcutPath);
         }
 
         private static bool DeleteShortcut(string shortcutPath)

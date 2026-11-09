@@ -24,6 +24,7 @@
 #endregion License Information (GPL v3)
 
 using Avalonia.Controls;
+using System.Diagnostics.CodeAnalysis;
 using ShareX.ImageEditor.Core.ImageEffects;
 using ShareX.ImageEditor.Core.ImageEffects.Parameters;
 using ShareX.PhotoEditor.UI.Dialogs;
@@ -32,14 +33,19 @@ namespace ShareX.PhotoEditor.UI.Commands;
 
 public static partial class EditorCommands
 {
-    private static readonly Lazy<IReadOnlyList<ImageEffectBase>> LibraryEffects = new(() =>
+    private static readonly Lazy<IReadOnlyList<ImageEffectBase>> LibraryEffects = new(FindLibraryEffects);
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Effect types live in ShareX.ImageEditor, which is rooted with TrimmerRootAssembly.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Effect types live in ShareX.ImageEditor, which is rooted with TrimmerRootAssembly.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Effect types live in ShareX.ImageEditor, which is rooted with TrimmerRootAssembly.")]
+    private static IReadOnlyList<ImageEffectBase> FindLibraryEffects() =>
         typeof(ImageEffectBase).Assembly.GetTypes()
             .Where(t => t is { IsAbstract: false, IsClass: true } && typeof(ImageEffectBase).IsAssignableFrom(t) && t.GetConstructor(Type.EmptyTypes) != null)
             .Select(t => { try { return Activator.CreateInstance(t) as ImageEffectBase; } catch { return null; } })
             .Where(e => e != null)
             .Select(e => e!)
             .OrderBy(e => e.Category).ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
-            .ToArray());
+            .ToArray();
 
     private static void RegisterFilter()
     {
@@ -147,6 +153,7 @@ public static partial class EditorCommands
     }
 
     /// <summary>Runs an effect from the shared ShareX image effects library with a generated parameter dialog.</summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Effect types live in ShareX.ImageEditor, which is rooted with TrimmerRootAssembly.")]
     private static async Task RunLibraryEffectAsync(PhotoEditorWindow w, Type effectType, Dictionary<string, object?>? preset = null)
     {
         var (raster, smart) = FilterTarget(w);

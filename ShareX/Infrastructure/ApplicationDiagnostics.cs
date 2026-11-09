@@ -30,8 +30,10 @@ using ShareX.HelpersLib;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 
 namespace ShareX;
@@ -42,7 +44,12 @@ internal static class ApplicationDiagnostics
 
     internal static void Initialize()
     {
-        AssemblyLoadContext.Default.Resolving += ResolveLocalizedAssembly;
+        // Satellite assemblies are compiled into the executable under NativeAOT and loading assemblies from disk is
+        // not supported there, so the Languages folder resolver is only needed for JIT builds.
+        if (RuntimeFeature.IsDynamicCodeSupported)
+        {
+            AssemblyLoadContext.Default.Resolving += ResolveLocalizedAssembly;
+        }
 
 #if DEBUG
         if (Debugger.IsAttached)
@@ -82,6 +89,7 @@ internal static class ApplicationDiagnostics
         }
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Only registered when dynamic code is supported (JIT). Satellite resource assemblies contain no code.")]
     private static Assembly? ResolveLocalizedAssembly(AssemblyLoadContext context, AssemblyName assemblyName)
     {
         if (string.IsNullOrEmpty(assemblyName.CultureName) ||

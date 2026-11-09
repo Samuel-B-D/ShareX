@@ -23,6 +23,7 @@
 
 #endregion License Information (GPL v3)
 
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using ShareX.ImageEditor.Core.ImageEffects;
 using ShareX.ImageEditor.Core.ImageEffects.Parameters;
@@ -38,10 +39,14 @@ public static class SmartFilterFactory
     public const string AdjustmentKind = "adjustment";
     public const string LibraryKind = "library";
 
-    private static readonly Lazy<IReadOnlyList<Type>> LibraryTypes = new(() =>
+    private static readonly Lazy<IReadOnlyList<Type>> LibraryTypes = new(FindLibraryTypes);
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Effect types live in ShareX.ImageEditor, which is rooted with TrimmerRootAssembly.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Effect types live in ShareX.ImageEditor, which is rooted with TrimmerRootAssembly.")]
+    private static IReadOnlyList<Type> FindLibraryTypes() =>
         typeof(ImageEffectBase).Assembly.GetTypes()
             .Where(t => t is { IsAbstract: false, IsClass: true } && typeof(ImageEffectBase).IsAssignableFrom(t) && t.GetConstructor(Type.EmptyTypes) != null)
-            .ToArray());
+            .ToArray();
 
     public static Func<SKBitmap, SKBitmap> FilterFunc(FilterDefinition filter, IReadOnlyDictionary<string, float> values, FilterContext context)
     {
@@ -60,6 +65,7 @@ public static class SmartFilterFactory
         };
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Effect types live in ShareX.ImageEditor, which is rooted with TrimmerRootAssembly.")]
     public static Func<SKBitmap, SKBitmap> LibraryFunc(Type effectType, IReadOnlyDictionary<string, object?> values)
     {
         Dictionary<string, object?> snapshot = new(values);
@@ -175,6 +181,8 @@ public static class SmartFilterFactory
         _ => "n:"
     };
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Enum types referenced by saved recipes are effect parameter enums in ShareX assemblies, which are rooted with TrimmerRootAssembly.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2057", Justification = "Enum types referenced by saved recipes are effect parameter enums in ShareX assemblies, which are rooted with TrimmerRootAssembly.")]
     private static object? DecodeValue(string text)
     {
         if (text.Length < 2) return null;

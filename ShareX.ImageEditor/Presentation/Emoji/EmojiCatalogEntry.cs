@@ -193,12 +193,8 @@ public static class EmojiCatalogService
             throw new InvalidOperationException($"Emoji catalog resource '{CatalogResourceName}' was not found.");
         }
 
-        var options = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        };
-
-        List<EmojiCatalogEntry>? entries = JsonSerializer.Deserialize<List<EmojiCatalogEntry>>(stream, options);
+        // Source generated metadata instead of reflection, which is disabled by default under NativeAOT.
+        List<EmojiCatalogEntry>? entries = JsonSerializer.Deserialize(stream, EmojiCatalogJsonContext.Default.ListEmojiCatalogEntry);
         if (entries == null || entries.Count == 0)
         {
             throw new InvalidOperationException("Emoji catalog is empty.");
@@ -206,4 +202,10 @@ public static class EmojiCatalogService
 
         return entries;
     }
+}
+
+[JsonSourceGenerationOptions(PropertyNameCaseInsensitive = true)]
+[JsonSerializable(typeof(List<EmojiCatalogEntry>))]
+internal sealed partial class EmojiCatalogJsonContext : JsonSerializerContext
+{
 }

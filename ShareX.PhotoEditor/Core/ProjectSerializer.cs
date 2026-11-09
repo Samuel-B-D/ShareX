@@ -26,6 +26,7 @@
 using System.IO.Compression;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace ShareX.PhotoEditor.Core;
 
@@ -33,7 +34,7 @@ namespace ShareX.PhotoEditor.Core;
 /// Native layered project format (.sxpe): a zip archive containing document.json and PNG files for
 /// layer pixels, masks, smart object sources, alpha channels and the selection.
 /// </summary>
-public static class ProjectSerializer
+public static partial class ProjectSerializer
 {
     public const int FormatVersion = 1;
 
@@ -41,10 +42,21 @@ public static class ProjectSerializer
     {
         WriteIndented = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Converters = { new JsonStringEnumConverter(), new ColorConverter(), new PointConverter(), new SizeConverter(), new RectConverter(), new RectIConverter(), new MatrixConverter() }
+        Converters = { new ColorConverter(), new PointConverter(), new SizeConverter(), new RectConverter(), new RectIConverter(), new MatrixConverter() },
+        // Source generated metadata instead of reflection, which is disabled by default under NativeAOT.
+        TypeInfoResolver = ProjectJsonContext.Default
     };
 
-    private sealed class DocumentDto
+    // UseStringEnumConverter replaces the non-generic JsonStringEnumConverter, which needs runtime generic instantiation.
+    [JsonSourceGenerationOptions(UseStringEnumConverter = true)]
+    [JsonSerializable(typeof(DocumentDto))]
+    internal sealed partial class ProjectJsonContext : JsonSerializerContext
+    {
+    }
+
+    private static JsonTypeInfo<DocumentDto> DocumentTypeInfo => (JsonTypeInfo<DocumentDto>)Options.GetTypeInfo(typeof(DocumentDto));
+
+    internal sealed class DocumentDto
     {
         public int Version { get; set; }
         public string Application { get; set; } = "ShareX Photo editor";
@@ -65,7 +77,7 @@ public static class ProjectSerializer
         public PathDto? WorkPath { get; set; }
     }
 
-    private sealed class SmartFilterDto
+    internal sealed class SmartFilterDto
     {
         public string Name { get; set; } = string.Empty;
         public string Key { get; set; } = string.Empty;
@@ -73,19 +85,19 @@ public static class ProjectSerializer
         public SmartFilterRecipe Recipe { get; set; } = new();
     }
 
-    private sealed class ChannelDto
+    internal sealed class ChannelDto
     {
         public string Name { get; set; } = string.Empty;
         public string File { get; set; } = string.Empty;
     }
 
-    private sealed class NamedPathDto
+    internal sealed class NamedPathDto
     {
         public string Name { get; set; } = string.Empty;
         public PathDto Path { get; set; } = new();
     }
 
-    private sealed class PathDto
+    internal sealed class PathDto
     {
         public SKPathFillType FillType { get; set; }
         public List<SubPathDto> SubPaths { get; set; } = [];
@@ -116,13 +128,13 @@ public static class ProjectSerializer
         }
     }
 
-    private sealed class SubPathDto
+    internal sealed class SubPathDto
     {
         public bool Closed { get; set; }
         public List<float[]> Anchors { get; set; } = [];
     }
 
-    private sealed class LayerDto
+    internal sealed class LayerDto
     {
         public LayerKind Kind { get; set; }
         public string Name { get; set; } = string.Empty;
@@ -312,7 +324,7 @@ public static class ProjectSerializer
                 };
                 ZipArchiveEntry json = zip.CreateEntry("document.json", CompressionLevel.Optimal);
                 using Stream jsonStream = json.Open();
-                JsonSerializer.Serialize(jsonStream, document, Options);
+                JsonSerializer.Serialize(jsonStream, document, DocumentTypeInfo);
             }
             File.Move(temp, path, true);
         }
@@ -330,7 +342,7 @@ public static class ProjectSerializer
         DocumentDto dto;
         using (Stream stream = entry.Open())
         {
-            dto = JsonSerializer.Deserialize<DocumentDto>(stream, Options) ?? throw new InvalidDataException("The project file is damaged.");
+            dto = JsonSerializer.Deserialize(stream, DocumentTypeInfo) ?? throw new InvalidDataException("The project file is damaged.");
         }
         if (dto.Version > FormatVersion) throw new DocumentOpenException(Strings.ProjectSerializer_NewerVersion);
 
@@ -469,10 +481,39 @@ public static class ProjectSerializer
         protected abstract float[] Values(T value);
 
         public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
-            Create(JsonSerializer.Deserialize<float[]>(ref reader) ?? []);
+            Create(ReadFloats(ref reader));
 
         public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options) =>
-            JsonSerializer.Serialize(writer, Values(value));
+            WriteFloats(writer, Values(value));
+
+        // Reads and writes the float array by hand: JsonSerializer.Deserialize<float[]>(ref reader) without type
+        // metadata relies on reflection, which is not available under NativeAOT.
+        private static float[] ReadFloats(ref Utf8JsonReader reader)
+        {
+            if (reader.TokenType == JsonTokenType.Null) return [];
+            if (reader.TokenType != JsonTokenType.StartArray) throw new JsonException("Expected an array of numbers.");
+
+            List<float> values = [];
+
+            while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+            {
+                values.Add(reader.GetSingle());
+            }
+
+            return values.ToArray();
+        }
+
+        private static void WriteFloats(Utf8JsonWriter writer, float[] values)
+        {
+            writer.WriteStartArray();
+
+            foreach (float value in values)
+            {
+                writer.WriteNumberValue(value);
+            }
+
+            writer.WriteEndArray();
+        }
     }
 
     private sealed class PointConverter : FloatArrayConverter<SKPoint>

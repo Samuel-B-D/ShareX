@@ -26,6 +26,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
@@ -252,6 +253,7 @@ namespace ShareX.HelpersLib
             }
         }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Only called on ShareX settings and effect types, whose assemblies are rooted with TrimmerRootAssembly.")]
         public static void ApplyDefaultPropertyValues(this object self)
         {
             foreach (PropertyDescriptor prop in TypeDescriptor.GetProperties(self))

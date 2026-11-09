@@ -27,6 +27,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 
@@ -34,6 +35,7 @@ namespace ShareX.HelpersLib
 {
     public class DPAPIEncryptedStringPropertyResolver : WritablePropertiesOnlyResolver
     {
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Newtonsoft.Json only builds contracts for ShareX settings types here, whose assemblies are rooted with TrimmerRootAssembly.")]
         protected override IList<JsonProperty> CreateProperties(Type type, MemberSerialization memberSerialization)
         {
             IList<JsonProperty> props = base.CreateProperties(type, memberSerialization);

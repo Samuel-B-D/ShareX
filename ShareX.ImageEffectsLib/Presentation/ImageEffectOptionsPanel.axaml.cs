@@ -33,6 +33,7 @@ using Avalonia.Media;
 using ShareX.HelpersLib;
 using ShareX.ImageEffectsLib.Localization;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection;
 using DrawingColor = System.Drawing.Color;
@@ -88,6 +89,7 @@ public partial class ImageEffectOptionsPanel : UserControl
         });
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Image effect types live in ShareX.ImageEffectsLib, which is rooted with TrimmerRootAssembly.")]
     private void BuildEditors()
     {
         if (_effect == null) return;
@@ -146,7 +148,7 @@ public partial class ImageEffectOptionsPanel : UserControl
 
         if (type.IsEnum && type.GetCustomAttribute<FlagsAttribute>() == null)
         {
-            object[] values = Enum.GetValues(type).Cast<object>().ToArray();
+            object[] values = Helpers.GetEnumValues(type).Cast<object>().ToArray();
             ComboBox combo = new()
             {
                 ItemsSource = values.Select(enumValue => ImageEffectsLocalization.GetEnumValue(type, enumValue)).ToArray(),
@@ -385,6 +387,7 @@ public partial class ImageEffectOptionsPanel : UserControl
         ShowButtonSpinner = false
     };
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Effect property types are primitives, enums or System.Drawing types whose TypeConverterAttribute targets are preserved by the trimmer.")]
     private void SetFromText(PropertyDescriptor property, string? text)
     {
         try
@@ -431,6 +434,7 @@ public partial class ImageEffectOptionsPanel : UserControl
 
     private void NotifyChanged() => _changed?.Invoke();
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Effect property types are primitives, enums or System.Drawing types whose TypeConverterAttribute targets are preserved by the trimmer.")]
     private static string ConvertPropertyToString(PropertyDescriptor property, object? value)
     {
         try { return property.Converter.ConvertToString(null, CultureInfo.CurrentCulture, value) ?? string.Empty; }

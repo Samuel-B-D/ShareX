@@ -32,6 +32,7 @@ using Avalonia.Threading;
 using ShareX.AvaloniaUI.Theming;
 using ShareX.HelpersLib;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -118,18 +119,29 @@ public partial class DebugLogWindow : Window
         }
     }
 
+    [UnconditionalSuppressMessage("SingleFile", "IL3000", Justification = "An empty Assembly.Location is handled and reported as an embedded assembly.")]
     private void OnLoadedAssembliesClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         StringBuilder builder = new();
-        string? directoryPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        string directoryPath = AppContext.BaseDirectory;
 
         foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
         {
-            if (!assembly.IsDynamic
-                && directoryPath != null
-                && assembly.Location.StartsWith(directoryPath, StringComparison.OrdinalIgnoreCase))
+            if (assembly.IsDynamic)
             {
-                builder.AppendLine(assembly.ManifestModule.Name);
+                continue;
+            }
+
+            // Assembly.Location is empty for assemblies compiled into a NativeAOT or single-file app.
+            string location = assembly.Location;
+
+            if (string.IsNullOrEmpty(location))
+            {
+                builder.AppendLine(assembly.GetName().Name + " (embedded)");
+            }
+            else if (location.StartsWith(directoryPath, StringComparison.OrdinalIgnoreCase))
+            {
+                builder.AppendLine(Path.GetFileName(location));
             }
         }
 

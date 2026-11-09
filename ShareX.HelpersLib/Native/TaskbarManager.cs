@@ -27,6 +27,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace ShareX.HelpersLib
 {
@@ -39,42 +40,62 @@ namespace ShareX.HelpersLib
         Paused = 0x8
     }
 
-    public static class TaskbarManager
+    // Source generated COM interface instead of [ComImport]: built-in COM interop is not available under NativeAOT
+    // (BuiltInComInteropSupport=false), so creating the old [ComImport] coclass threw NotSupportedException.
+    [GeneratedComInterface, Guid("c43dc798-95d1-4bea-9030-bb99e2983a1a")]
+    internal partial interface ITaskbarList4
     {
-        [ComImport, Guid("c43dc798-95d1-4bea-9030-bb99e2983a1a"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-        private interface ITaskbarList4
+        // ITaskbarList
+        [PreserveSig]
+        int HrInit();
+
+        [PreserveSig]
+        int AddTab(IntPtr hwnd);
+
+        [PreserveSig]
+        int DeleteTab(IntPtr hwnd);
+
+        [PreserveSig]
+        int ActivateTab(IntPtr hwnd);
+
+        [PreserveSig]
+        int SetActiveAlt(IntPtr hwnd);
+
+        // ITaskbarList2
+        [PreserveSig]
+        int MarkFullscreenWindow(IntPtr hwnd, [MarshalAs(UnmanagedType.Bool)] bool fFullscreen);
+
+        // ITaskbarList3
+        [PreserveSig]
+        int SetProgressValue(IntPtr hwnd, ulong ullCompleted, ulong ullTotal);
+
+        [PreserveSig]
+        int SetProgressState(IntPtr hwnd, TaskbarProgressBarStatus tbpFlags);
+    }
+
+    public static partial class TaskbarManager
+    {
+        private static readonly Guid CLSID_TaskbarList = new Guid("56FDF344-FD6D-11d0-958A-006097C9A090");
+        private static readonly Guid IID_ITaskbarList4 = new Guid("c43dc798-95d1-4bea-9030-bb99e2983a1a");
+        private const uint CLSCTX_INPROC_SERVER = 0x1;
+
+        private static readonly StrategyBasedComWrappers comWrappers = new StrategyBasedComWrappers();
+
+        [LibraryImport("ole32.dll")]
+        private static partial int CoCreateInstance(in Guid rclsid, IntPtr pUnkOuter, uint dwClsContext, in Guid riid, out IntPtr ppv);
+
+        private static ITaskbarList4 CreateTaskbarList()
         {
-            // ITaskbarList
-            [PreserveSig]
-            void HrInit();
+            Marshal.ThrowExceptionForHR(CoCreateInstance(CLSID_TaskbarList, IntPtr.Zero, CLSCTX_INPROC_SERVER, IID_ITaskbarList4, out IntPtr pointer));
 
-            [PreserveSig]
-            void AddTab(IntPtr hwnd);
-
-            [PreserveSig]
-            void DeleteTab(IntPtr hwnd);
-
-            [PreserveSig]
-            void ActivateTab(IntPtr hwnd);
-
-            [PreserveSig]
-            void SetActiveAlt(IntPtr hwnd);
-
-            // ITaskbarList2
-            [PreserveSig]
-            void MarkFullscreenWindow(IntPtr hwnd, [MarshalAs(UnmanagedType.Bool)] bool fFullscreen);
-
-            // ITaskbarList3
-            [PreserveSig]
-            void SetProgressValue(IntPtr hwnd, ulong ullCompleted, ulong ullTotal);
-
-            [PreserveSig]
-            void SetProgressState(IntPtr hwnd, TaskbarProgressBarStatus tbpFlags);
-        }
-
-        [ComImport, Guid("56FDF344-FD6D-11d0-958A-006097C9A090"), ClassInterface(ClassInterfaceType.None)]
-        private class CTaskbarList
-        {
+            try
+            {
+                return (ITaskbarList4)comWrappers.GetOrCreateObjectForComInstance(pointer, CreateObjectFlags.UniqueInstance);
+            }
+            finally
+            {
+                Marshal.Release(pointer);
+            }
         }
 
         private static readonly object syncLock = new object();
@@ -91,7 +112,7 @@ namespace ShareX.HelpersLib
                     {
                         if (taskbarList == null)
                         {
-                            taskbarList = (ITaskbarList4)new CTaskbarList();
+                            taskbarList = CreateTaskbarList();
                             taskbarList.HrInit();
                         }
                     }

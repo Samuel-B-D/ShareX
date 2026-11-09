@@ -27,6 +27,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace ShareX.HelpersLib
@@ -78,6 +79,10 @@ namespace ShareX.HelpersLib
             }
         }
 
+        // NativeAOT note: ShareX types keep their field metadata (assemblies rooted with TrimmerRootAssembly), but private
+        // fields of framework types (List<T>._items, Dictionary<,>._entries, ...) may have no reflection metadata. Those
+        // fields are then skipped and stay shared with the original after MemberwiseClone (shallow copy).
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Deep copy walks ShareX settings types, whose assemblies are rooted with TrimmerRootAssembly. See note above for framework types.")]
         private static void CopyFields(object originalObject, IDictionary<object, object> visited, object cloneObject, Type typeToReflect, BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.FlattenHierarchy, Func<FieldInfo, bool> filter = null)
         {
             foreach (FieldInfo fieldInfo in typeToReflect.GetFields(bindingFlags))

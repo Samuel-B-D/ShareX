@@ -28,6 +28,7 @@ using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace ShareX.AvaloniaUI.Controls;
@@ -162,15 +163,30 @@ public sealed class SettingsSearch : AvaloniaObject
 
     private static void AddDisplayedText(Control control, List<string> values)
     {
-        PropertyInfo[] properties = SearchableProperties.GetOrAdd(control.GetType(), static type => SearchablePropertyNames
-            .Select(name => type.GetProperty(name, BindingFlags.Instance | BindingFlags.Public))
-            .Where(property => property is { CanRead: true } && property.GetIndexParameters().Length == 0)
-            .Cast<PropertyInfo>()
-            .ToArray());
-
-        foreach (PropertyInfo property in properties)
+        foreach (string name in SearchablePropertyNames)
         {
-            if (control is TextBox && property.Name == "Text")
+            if (control is TextBox && name == "Text")
+            {
+                continue;
+            }
+
+            // Text, Content, Header and Watermark are Avalonia properties on the framework controls. Reading them
+            // through the property system avoids CLR reflection on trimmed Avalonia assemblies.
+            AvaloniaProperty? avaloniaProperty = AvaloniaPropertyRegistry.Instance.FindRegistered(control, name);
+
+            if (avaloniaProperty != null)
+            {
+                if (control.GetValue(avaloniaProperty) is string text && !string.IsNullOrWhiteSpace(text))
+                {
+                    values.Add(text);
+                }
+
+                continue;
+            }
+
+            PropertyInfo? property = GetSearchableClrProperty(control.GetType(), name);
+
+            if (property == null)
             {
                 continue;
             }
@@ -187,6 +203,18 @@ public sealed class SettingsSearch : AvaloniaObject
                 // A custom control property should not be able to break settings search.
             }
         }
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Fallback for plain CLR properties on ShareX controls, whose assemblies are rooted with TrimmerRootAssembly.")]
+    private static PropertyInfo? GetSearchableClrProperty(Type type, string name)
+    {
+        PropertyInfo[] properties = SearchableProperties.GetOrAdd(type, static type => SearchablePropertyNames
+            .Select(name => type.GetProperty(name, BindingFlags.Instance | BindingFlags.Public))
+            .Where(property => property is { CanRead: true } && property.GetIndexParameters().Length == 0)
+            .Cast<PropertyInfo>()
+            .ToArray());
+
+        return properties.FirstOrDefault(property => property.Name == name);
     }
 
     private static string GetItemsSourceSearchText(Control root)
@@ -227,6 +255,7 @@ public sealed class SettingsSearch : AvaloniaObject
         }
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Items sources hold ShareX view models and options, whose assemblies are rooted with TrimmerRootAssembly.")]
     private static void AddSearchableItemText(object? value, List<string> values, int depth)
     {
         if (value == null || depth > 4)

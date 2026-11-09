@@ -24,6 +24,7 @@
 #endregion License Information (GPL v3)
 
 using ShareX.ImageEditor.Core.ImageEffects;
+using System.Diagnostics.CodeAnalysis;
 
 namespace ShareX.ImageEditor.Presentation.Effects;
 
@@ -33,6 +34,9 @@ internal static class DiscoveredEffectRegistry
 
     public static IReadOnlyList<EffectDefinition> Definitions => _definitions.Value;
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Effect types live in ShareX.ImageEditor, which is rooted with TrimmerRootAssembly.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Effect types live in ShareX.ImageEditor, which is rooted with TrimmerRootAssembly.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "Effect types live in ShareX.ImageEditor, which is rooted with TrimmerRootAssembly.")]
     private static IReadOnlyList<EffectDefinition> BuildDefinitions()
     {
         List<EffectDefinition> definitions = [];

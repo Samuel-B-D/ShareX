@@ -7,6 +7,22 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Platforms>x64;ARM64</Platforms>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <SelfContained>true</SelfContained>
+    <PublishAot>true</PublishAot>
+    <PublishTrimmed>true</PublishTrimmed>
+    <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
+    <OptimizationPreference>Speed</OptimizationPreference>
+    <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+
+    <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
+    <UseFastDeployment>false</UseFastDeployment>
+    <RunAOTCompilation>true</RunAOTCompilation>
+    <!-- ShareX ships translations and switches CultureInfo at runtime; invariant mode makes GetCultureInfo("fr-FR") throw. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <StripSymbols>true</StripSymbols>
+    <TrimMode>link</TrimMode>
   </PropertyGroup>
 
   <ItemGroup>

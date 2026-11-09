@@ -26,6 +26,7 @@
 #nullable disable
 
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using ShareX.HelpersLib;
 using System.Text;
 using Image = SkiaSharp.SKBitmap;
@@ -59,22 +60,23 @@ namespace ShareX.Tools
         {
             using (HttpClient client = new HttpClient())
             {
-                var payload = new
+                // Built with JObject instead of serializing anonymous types through reflection (trimming/NativeAOT safe).
+                JObject payload = new JObject
                 {
-                    contents = new[]
+                    ["contents"] = new JArray
                     {
-                        new
+                        new JObject
                         {
-                            parts = new object[]
+                            ["parts"] = new JArray
                             {
-                                new { text = prompt },
-                                new { inline_data = new { mime_type = "image/png", data = base64Image } }
+                                new JObject { ["text"] = prompt },
+                                new JObject { ["inline_data"] = new JObject { ["mime_type"] = "image/png", ["data"] = base64Image } }
                             }
                         }
                     }
                 };
 
-                string jsonPayload = JsonConvert.SerializeObject(payload);
+                string jsonPayload = payload.ToString(Formatting.None);
                 StringContent content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
                 string url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
@@ -84,8 +86,9 @@ namespace ShareX.Tools
 
                 if (response.IsSuccessStatusCode)
                 {
-                    dynamic responseObject = JsonConvert.DeserializeObject(responseString);
-                    return responseObject.candidates[0].content.parts[0].text;
+                    // JObject instead of dynamic: the C# runtime binder is not supported under NativeAOT.
+                    JObject responseObject = JObject.Parse(responseString);
+                    return (string)responseObject["candidates"][0]["content"]["parts"][0]["text"];
                 }
                 else
                 {

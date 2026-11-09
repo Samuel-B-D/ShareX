@@ -24,11 +24,13 @@
 #endregion License Information (GPL v3)
 
 using ShareX.ImageEditor.Core.ImageEffects;
+using System.Diagnostics.CodeAnalysis;
 
 namespace ShareX.ImageEditor.Presentation.Effects;
 
 internal static class DiscoveredEffectPresentationAdapter
 {
+    [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Effect types live in ShareX.ImageEditor, which is rooted with TrimmerRootAssembly.")]
     public static EffectDefinition CreateDefinition(ImageEffectBase effect)
     {
         Type effectType = effect.GetType();

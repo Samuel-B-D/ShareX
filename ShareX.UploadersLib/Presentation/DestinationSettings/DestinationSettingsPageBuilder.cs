@@ -40,6 +40,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -780,6 +781,7 @@ internal sealed class DestinationSettingsPageBuilder
         return true;
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2062", Justification = "List items are ShareX uploader settings types, whose assemblies are rooted with TrimmerRootAssembly.")]
     private Control BuildListEditor(IList list, DestinationMember member, object owner, Action? listChanged = null)
     {
         Type itemType = member.ValueType.IsGenericType ? member.ValueType.GetGenericArguments()[0] : typeof(object);
@@ -884,6 +886,8 @@ internal sealed class DestinationSettingsPageBuilder
         return items;
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Cloned objects are ShareX uploader settings types, whose assemblies are rooted with TrimmerRootAssembly.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "Cloned objects are ShareX uploader settings types, whose assemblies are rooted with TrimmerRootAssembly.")]
     private static object? CloneObject(object source)
     {
         MethodInfo? clone = source.GetType().GetMethod("Clone", BindingFlags.Instance | BindingFlags.Public, Type.EmptyTypes);
@@ -898,6 +902,7 @@ internal sealed class DestinationSettingsPageBuilder
         return result;
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Edited objects are ShareX uploader settings types, whose assemblies are rooted with TrimmerRootAssembly.")]
     private static IEnumerable<DestinationMember> GetEditableMembers(Type type)
     {
         IEnumerable<DestinationMember> properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
@@ -1088,7 +1093,7 @@ internal sealed class DestinationSettingsPageBuilder
 
     private static ComboBox EnumCombo(Type enumType, object? current, Action<object> setter)
     {
-        DestinationChoice[] choices = Enum.GetValues(enumType).Cast<Enum>()
+        DestinationChoice[] choices = Helpers.GetEnumValues(enumType)
             .Select(value => new DestinationChoice(value,
                 value.GetLocalizedDescription(Localization.Strings.ResourceManager))).ToArray();
         DestinationChoice selected = choices.FirstOrDefault(x => Equals(x.Value, current)) ?? choices[0];

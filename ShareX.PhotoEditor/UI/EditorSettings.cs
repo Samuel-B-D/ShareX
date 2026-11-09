@@ -110,11 +110,7 @@ public sealed class EditorSettings
 
     public bool ExportWebPLossless { get; set; }
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        Converters = { new JsonStringEnumConverter() }
-    };
+    // Source generated metadata (EditorSettingsJsonContext) instead of reflection, which is disabled by default under NativeAOT.
 
     public static EditorSettings Load(string? path)
     {
@@ -122,7 +118,7 @@ public sealed class EditorSettings
         {
             if (!string.IsNullOrEmpty(path) && File.Exists(path))
             {
-                return (JsonSerializer.Deserialize<EditorSettings>(File.ReadAllText(path), JsonOptions) ?? new EditorSettings()).Normalize();
+                return (JsonSerializer.Deserialize(File.ReadAllText(path), EditorSettingsJsonContext.Default.EditorSettings) ?? new EditorSettings()).Normalize();
             }
         }
         catch (Exception ex)
@@ -163,7 +159,7 @@ public sealed class EditorSettings
         {
             string? directory = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
-            File.WriteAllText(path, JsonSerializer.Serialize(this, JsonOptions));
+            File.WriteAllText(path, JsonSerializer.Serialize(this, EditorSettingsJsonContext.Default.EditorSettings));
         }
         catch (Exception ex)
         {
@@ -179,4 +175,10 @@ public sealed class EditorSettings
         RecentFiles.Insert(0, path);
         if (RecentFiles.Count > 15) RecentFiles.RemoveRange(15, RecentFiles.Count - 15);
     }
+}
+
+[JsonSourceGenerationOptions(WriteIndented = true, UseStringEnumConverter = true)]
+[JsonSerializable(typeof(EditorSettings))]
+internal sealed partial class EditorSettingsJsonContext : JsonSerializerContext
+{
 }

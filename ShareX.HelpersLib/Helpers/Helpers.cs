@@ -29,6 +29,7 @@ using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
@@ -153,14 +154,31 @@ namespace ShareX.HelpersLib
             return Regex.Match(input, string.Format("(?<={0}>).+?(?=</{0})", tag)).Value;
         }
 
-        public static T[] GetEnums<T>()
+        public static T[] GetEnums<T>() where T : struct, Enum
         {
-            return (T[])Enum.GetValues(typeof(T));
+            return Enum.GetValues<T>();
         }
 
-        public static string[] GetEnumDescriptions<T>(int skip = 0)
+        /// <summary>
+        /// AOT-safe replacement for Enum.GetValues(Type): Enum.GetValues(Type) has to create an array of the enum type at
+        /// runtime, which NativeAOT cannot guarantee. The values are read as the underlying type and boxed back as the enum.
+        /// </summary>
+        public static Enum[] GetEnumValues(Type enumType)
         {
-            return Enum.GetValues(typeof(T)).OfType<Enum>().Skip(skip).Select(x => x.GetDescription()).ToArray();
+            Array values = Enum.GetValuesAsUnderlyingType(enumType);
+            Enum[] result = new Enum[values.Length];
+
+            for (int i = 0; i < values.Length; i++)
+            {
+                result[i] = (Enum)Enum.ToObject(enumType, values.GetValue(i));
+            }
+
+            return result;
+        }
+
+        public static string[] GetEnumDescriptions<T>(int skip = 0) where T : struct, Enum
+        {
+            return Enum.GetValues<T>().Skip(skip).Select(x => x.GetDescription()).ToArray();
         }
 
         /*public static string[] GetLocalizedEnumDescriptions<T>()
@@ -171,27 +189,27 @@ namespace ShareX.HelpersLib
             return GetLocalizedEnumDescriptions<T>(resourceManager);
         }*/
 
-        public static string[] GetLocalizedEnumDescriptions<T>()
+        public static string[] GetLocalizedEnumDescriptions<T>() where T : struct, Enum
         {
             return GetLocalizedEnumDescriptions<T>(Localization.Strings.ResourceManager);
         }
 
-        public static string[] GetLocalizedEnumDescriptions<T>(ResourceManager resourceManager)
+        public static string[] GetLocalizedEnumDescriptions<T>(ResourceManager resourceManager) where T : struct, Enum
         {
-            return Enum.GetValues(typeof(T)).OfType<Enum>().Select(x => x.GetLocalizedDescription(resourceManager)).ToArray();
+            return Enum.GetValues<T>().Select(x => x.GetLocalizedDescription(resourceManager)).ToArray();
         }
 
-        public static int GetEnumLength<T>()
+        public static int GetEnumLength<T>() where T : struct, Enum
         {
-            return Enum.GetValues(typeof(T)).Length;
+            return Enum.GetValues<T>().Length;
         }
 
-        public static T GetEnumFromIndex<T>(int i)
+        public static T GetEnumFromIndex<T>(int i) where T : struct, Enum
         {
             return GetEnums<T>()[i];
         }
 
-        public static string[] GetEnumNamesProper<T>()
+        public static string[] GetEnumNamesProper<T>() where T : struct, Enum
         {
             return GetEnumNamesProper(typeof(T));
         }
@@ -210,7 +228,7 @@ namespace ShareX.HelpersLib
         }
 
         // returns a list of public static fields of the class type (similar to enum values)
-        public static T[] GetValueFields<T>()
+        public static T[] GetValueFields<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] T>()
         {
             List<T> res = new List<T>();
             foreach (FieldInfo fi in typeof(T).GetFields(BindingFlags.Static | BindingFlags.Public))
@@ -541,25 +559,10 @@ namespace ShareX.HelpersLib
 
         public static void SetDefaultUICulture(CultureInfo culture)
         {
-            Type type = typeof(CultureInfo);
-
-            try
-            {
-                // .NET 4.0
-                type.InvokeMember("s_userDefaultUICulture", BindingFlags.SetField | BindingFlags.NonPublic | BindingFlags.Static, null, culture, new object[] { culture });
-            }
-            catch
-            {
-                try
-                {
-                    // .NET 2.0
-                    type.InvokeMember("m_userDefaultUICulture", BindingFlags.SetField | BindingFlags.NonPublic | BindingFlags.Static, null, culture, new object[] { culture });
-                }
-                catch
-                {
-                    DebugHelper.WriteLine("SetDefaultUICulture failed: " + culture.DisplayName);
-                }
-            }
+            // Public API instead of writing CultureInfo private fields through reflection,
+            // which has no metadata (and silently fails) under trimming and NativeAOT.
+            CultureInfo.DefaultThreadCurrentUICulture = culture;
+            CultureInfo.CurrentUICulture = culture;
         }
 
         public static bool IsAdministrator()
@@ -620,6 +623,9 @@ namespace ShareX.HelpersLib
             }
         }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "ShareX assemblies are rooted with TrimmerRootAssembly, so every subclass and its constructor is kept.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "ShareX assemblies are rooted with TrimmerRootAssembly, so every subclass and its constructor is kept.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "ShareX assemblies are rooted with TrimmerRootAssembly, so every subclass and its constructor is kept.")]
         public static IEnumerable<T> GetInstances<T>() where T : class
         {
             Type baseType = typeof(T);
@@ -628,6 +634,7 @@ namespace ShareX.HelpersLib
                 Select(t => Activator.CreateInstance(t) as T);
         }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "ShareX assemblies are rooted with TrimmerRootAssembly, so every subclass is kept.")]
         public static IEnumerable<Type> FindSubclassesOf<T>()
         {
             Type baseType = typeof(T);

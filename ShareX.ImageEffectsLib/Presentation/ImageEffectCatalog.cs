@@ -24,6 +24,7 @@
 #endregion License Information (GPL v3)
 
 using ShareX.ImageEffectsLib.Localization;
+using System.Diagnostics.CodeAnalysis;
 
 namespace ShareX.ImageEffectsLib;
 
@@ -31,6 +32,7 @@ public sealed record ImageEffectDefinition(string CategoryResourceKey, Type Effe
 {
     public string Category => Strings.ResourceManager.GetString(CategoryResourceKey, Strings.Culture) ?? CategoryResourceKey;
     public string Name => ImageEffectsLocalization.GetEffectName(EffectType);
+    [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Effect types live in ShareX.ImageEffectsLib, which is rooted with TrimmerRootAssembly.")]
     public ImageEffect Create() => (ImageEffect)Activator.CreateInstance(EffectType)!;
 }
 

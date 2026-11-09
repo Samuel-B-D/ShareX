@@ -186,7 +186,7 @@ namespace ShareX.Tools
                 store = false
             };
 
-            string json = JsonSerializer.Serialize(request);
+            string json = JsonSerializer.Serialize(request, AnalyzeImageJsonContext.Default.ChatGPTRequest);
             StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
             string url;
@@ -211,7 +211,7 @@ namespace ShareX.Tools
             response.EnsureSuccessStatusCode();
             string responseString = await response.Content.ReadAsStringAsync();
 
-            ChatGPTResponse result = JsonSerializer.Deserialize<ChatGPTResponse>(responseString);
+            ChatGPTResponse result = JsonSerializer.Deserialize(responseString, AnalyzeImageJsonContext.Default.ChatGPTResponse);
 
             if (result.output != null && result.output.Length > 0)
             {

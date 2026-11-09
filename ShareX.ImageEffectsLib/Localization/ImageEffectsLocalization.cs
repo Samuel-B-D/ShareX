@@ -25,6 +25,7 @@
 
 using ShareX.HelpersLib;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
@@ -53,6 +54,7 @@ internal static class ImageEffectsLocalization
         return Get($"ImageEffectPropertyDescription_{effectType.Name}_{property.Name}", property.Description);
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Effect option enums live in ShareX assemblies, which are rooted with TrimmerRootAssembly; enum fields are always kept with their type.")]
     public static string GetEnumValue(Type enumType, object value)
     {
         string name = Enum.GetName(enumType, value) ?? value.ToString() ?? string.Empty;

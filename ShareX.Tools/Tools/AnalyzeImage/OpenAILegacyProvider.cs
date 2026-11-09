@@ -150,7 +150,7 @@ namespace ShareX.Tools
                 }
             };
 
-            string json = JsonSerializer.Serialize(request);
+            string json = JsonSerializer.Serialize(request, AnalyzeImageJsonContext.Default.ChatGPTLegacyRequest);
             StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
             string url;
@@ -175,7 +175,7 @@ namespace ShareX.Tools
             response.EnsureSuccessStatusCode();
             string responseString = await response.Content.ReadAsStringAsync();
 
-            ChatGPTLegacyResponse result = JsonSerializer.Deserialize<ChatGPTLegacyResponse>(responseString);
+            ChatGPTLegacyResponse result = JsonSerializer.Deserialize(responseString, AnalyzeImageJsonContext.Default.ChatGPTLegacyResponse);
 
             if (result.choices != null && result.choices.Length > 0)
             {
