@@ -23,13 +23,15 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
 using ShareX.ImageEditor.Integration;
 using System.Collections.Generic;
 using System.Drawing;
 
 namespace ShareX.ScreenCaptureLib
 {
-    public class RegionCaptureOptions
+    [GenerateDeepCopy]
+    public partial class RegionCaptureOptions
     {
         public const int MinimumSize = 5;
         public const int InputDelay = 500;

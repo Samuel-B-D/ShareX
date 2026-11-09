@@ -23,9 +23,12 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
+
 namespace ShareX
 {
-    public class WatchFolderSettings
+    [GenerateDeepCopy]
+    public partial class WatchFolderSettings
     {
         public string FolderPath { get; set; }
         public string Filter { get; set; }

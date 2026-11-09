@@ -23,9 +23,12 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
+
 namespace ShareX.Tools;
 
-public class BackgroundRemoverOptions
+[GenerateDeepCopy]
+public partial class BackgroundRemoverOptions
 {
     public string SelectedModelFileName { get; set; } = "";
     public BackgroundRemovalDevice SelectedDevice { get; set; } = BackgroundRemovalDevice.Auto;

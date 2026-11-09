@@ -23,11 +23,13 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
 using ShareX.HelpersLib;
 
 namespace ShareX.Tools;
 
-public sealed class OCROptions
+[GenerateDeepCopy]
+public sealed partial class OCROptions
 {
     public bool SingleLine { get; set; }
     public bool Silent { get; set; }

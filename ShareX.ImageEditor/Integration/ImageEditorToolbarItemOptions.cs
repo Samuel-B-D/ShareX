@@ -23,9 +23,12 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
+
 namespace ShareX.ImageEditor.Integration
 {
-    public class ImageEditorToolbarItemOptions
+    [GenerateDeepCopy]
+    public partial class ImageEditorToolbarItemOptions
     {
         public string Id { get; set; } = "";
         public bool? BeginGroup { get; set; }

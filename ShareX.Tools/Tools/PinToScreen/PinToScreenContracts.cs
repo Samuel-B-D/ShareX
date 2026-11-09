@@ -23,12 +23,14 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
 using ShareX.HelpersLib;
 using System.Drawing;
 
 namespace ShareX.Tools;
 
-public sealed class PinToScreenOptions
+[GenerateDeepCopy]
+public sealed partial class PinToScreenOptions
 {
     public int InitialScale { get; set; } = 100;
     public int ScaleStep { get; set; } = 10;

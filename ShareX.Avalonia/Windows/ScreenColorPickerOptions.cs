@@ -23,9 +23,12 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
+
 namespace ShareX.AvaloniaUI.Windows;
 
-public class ScreenColorPickerOptions
+[GenerateDeepCopy]
+public partial class ScreenColorPickerOptions
 {
     public string Format { get; set; } = "$HEX";
 

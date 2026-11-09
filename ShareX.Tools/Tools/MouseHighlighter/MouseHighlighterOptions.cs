@@ -23,6 +23,7 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
 using System.Drawing;
 
 namespace ShareX.Tools;
@@ -33,7 +34,8 @@ public enum MouseHighlightMode
     Ripple
 }
 
-public sealed class MouseHighlighterOptions
+[GenerateDeepCopy]
+public sealed partial class MouseHighlighterOptions
 {
     public bool AutoActivate { get; set; }
     public MouseHighlightMode Mode { get; set; } = MouseHighlightMode.Ripple;

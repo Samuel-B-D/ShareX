@@ -23,6 +23,7 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
 using ShareX.HelpersLib;
 using System;
 using System.Collections.Generic;
@@ -30,7 +31,8 @@ using System.Linq;
 
 namespace ShareX.UploadersLib
 {
-    public class UploaderFilter
+    [GenerateDeepCopy]
+    public partial class UploaderFilter
     {
         public string Uploader { get; set; }
         public List<string> Extensions { get; set; } = new List<string>();

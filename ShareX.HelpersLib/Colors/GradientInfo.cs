@@ -23,6 +23,7 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
 using System.Text.Json.Serialization;
 using SkiaSharp;
 using System;
@@ -33,7 +34,8 @@ using System.Linq;
 
 namespace ShareX.HelpersLib
 {
-    public class GradientInfo
+    [GenerateDeepCopy]
+    public partial class GradientInfo
     {
         [DefaultValue(ImageGradientMode.Vertical)]
         public ImageGradientMode Type { get; set; }

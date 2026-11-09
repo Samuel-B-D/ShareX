@@ -23,6 +23,7 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -33,6 +34,7 @@ using System.ComponentModel;
 
 namespace ShareX.Tools;
 
+[GenerateDeepCopy]
 public sealed partial class OCRServiceLinkOption : ObservableObject
 {
     [ObservableProperty]

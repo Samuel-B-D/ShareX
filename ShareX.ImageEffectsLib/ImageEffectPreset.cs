@@ -23,6 +23,7 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
 using ShareX.HelpersLib;
 using SkiaSharp;
 using System.Drawing;
@@ -30,7 +31,8 @@ using System.Text.Json.Serialization;
 
 namespace ShareX.ImageEffectsLib
 {
-    public class ImageEffectPreset : IJsonOnDeserialized
+    [GenerateDeepCopy]
+    public partial class ImageEffectPreset : IJsonOnDeserialized
     {
         public string Name { get; set; } = "";
 

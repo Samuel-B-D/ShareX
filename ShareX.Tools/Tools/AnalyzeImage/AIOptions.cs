@@ -25,6 +25,7 @@
 
 #nullable disable
 
+using ShareX.Copying;
 using ShareX.HelpersLib;
 
 namespace ShareX.Tools
@@ -37,7 +38,8 @@ namespace ShareX.Tools
         OpenAILegacy
     }
 
-    public class AIOptions
+    [GenerateDeepCopy]
+    public partial class AIOptions
     {
         public AIProvider Provider { get; set; } = AIProvider.OpenAI;
 

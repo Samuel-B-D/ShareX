@@ -25,12 +25,14 @@
 
 #nullable disable
 
+using ShareX.Copying;
 using ShareX.HelpersLib;
 using System.Text;
 
 namespace ShareX.Tools
 {
-    public class VideoConverterOptions
+    [GenerateDeepCopy]
+    public partial class VideoConverterOptions
     {
         public string InputFilePath { get; set; }
         public string OutputFolderPath { get; set; }

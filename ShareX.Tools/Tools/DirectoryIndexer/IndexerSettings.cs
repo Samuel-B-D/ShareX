@@ -25,13 +25,15 @@
 
 #nullable disable
 
+using ShareX.Copying;
 using ShareX.HelpersLib;
 using System.ComponentModel;
 using System.Text.Json.Serialization;
 
 namespace ShareX.Tools
 {
-    public class IndexerSettings
+    [GenerateDeepCopy]
+    public partial class IndexerSettings
     {
         [Category("Indexer"), DefaultValue(IndexerOutput.Html), Description("Indexer output type.")]
         public IndexerOutput Output { get; set; }

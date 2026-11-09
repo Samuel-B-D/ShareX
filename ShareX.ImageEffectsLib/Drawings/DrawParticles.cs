@@ -31,7 +31,7 @@ using System.Drawing;
 namespace ShareX.ImageEffectsLib
 {
     [Description("Particles")]
-    public class DrawParticles : ImageEffect
+    public partial class DrawParticles : ImageEffect
     {
         [DefaultValue("")]
         public string ImageFolder { get; set; }

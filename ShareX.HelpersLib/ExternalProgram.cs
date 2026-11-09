@@ -23,6 +23,7 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -30,7 +31,8 @@ using System.Threading.Tasks;
 
 namespace ShareX.HelpersLib
 {
-    public class ExternalProgram
+    [GenerateDeepCopy]
+    public partial class ExternalProgram
     {
         public bool IsActive { get; set; }
         public string Name { get; set; }

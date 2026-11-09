@@ -23,9 +23,12 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
+
 namespace ShareX.Tools;
 
-public sealed class BorderlessWindowSettings
+[GenerateDeepCopy]
+public sealed partial class BorderlessWindowSettings
 {
     public bool RememberWindowTitle { get; set; } = true;
     public string WindowTitle { get; set; } = string.Empty;

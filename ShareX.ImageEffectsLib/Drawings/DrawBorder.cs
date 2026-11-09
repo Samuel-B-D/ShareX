@@ -31,7 +31,7 @@ using System.Drawing;
 namespace ShareX.ImageEffectsLib
 {
     [Description("Border")]
-    public class DrawBorder : ImageEffect
+    public partial class DrawBorder : ImageEffect
     {
         [DefaultValue(BorderType.Outside)]
         public BorderType Type { get; set; }

@@ -23,6 +23,7 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
 using ShareX.HelpersLib.Json;
 using ShareX.ImageEffectsLib.Localization;
 using SkiaSharp;
@@ -33,7 +34,8 @@ namespace ShareX.ImageEffectsLib
 {
     // Not inherited by the concrete effect types, so the converter can serialize them with their own metadata.
     [JsonConverter(typeof(ImageEffectJsonConverter))]
-    public abstract class ImageEffect
+    [GenerateDeepCopy]
+    public abstract partial class ImageEffect
     {
         [DefaultValue(true), Browsable(false)]
         public bool Enabled { get; set; }

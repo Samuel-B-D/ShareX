@@ -30,7 +30,7 @@ using System.Drawing;
 
 namespace ShareX.ImageEffectsLib
 {
-    internal class Glow : ImageEffect
+    internal partial class Glow : ImageEffect
     {
         private int size;
 

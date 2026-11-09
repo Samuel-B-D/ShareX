@@ -25,6 +25,7 @@
 
 #nullable enable
 
+using ShareX.Copying;
 using System.Collections.Generic;
 using System.Linq;
 using ShareX.Icons;
@@ -35,7 +36,8 @@ namespace ShareX;
 /// Describes an action shown in the notification's hover toolbar. The order of
 /// items in <see cref="NotificationWindowConfig.ActionButtons"/> is the display order.
 /// </summary>
-public sealed class NotificationActionButton
+[GenerateDeepCopy]
+public sealed partial class NotificationActionButton
 {
     public ToastClickAction Action { get; set; }
     public string? Label { get; set; }

@@ -23,6 +23,7 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
 using ShareX.AvaloniaUI.Windows;
 using ShareX.HelpersLib;
 using ShareX.ImageEditor.Integration;
@@ -40,8 +41,11 @@ using System.Text.Json.Serialization;
 
 namespace ShareX
 {
-    public class TaskSettings
+    [GenerateDeepCopy]
+    public partial class TaskSettings
     {
+        // Points back to the settings this copy was made from; a copy must keep pointing to the same instance.
+        [ShallowCopy]
         [JsonIgnore]
         public TaskSettings TaskSettingsReference { get; private set; }
 
@@ -302,7 +306,8 @@ namespace ShareX
         }
     }
 
-    public class TaskSettingsGeneral
+    [GenerateDeepCopy]
+    public partial class TaskSettingsGeneral
     {
         #region General / Notifications
 
@@ -335,7 +340,8 @@ namespace ShareX
         #endregion
     }
 
-    public class TaskSettingsImage
+    [GenerateDeepCopy]
+    public partial class TaskSettingsImage
     {
         #region Image / General
 
@@ -378,7 +384,8 @@ namespace ShareX
         #endregion Image / Thumbnail
     }
 
-    public class TaskSettingsCapture
+    [GenerateDeepCopy]
+    public partial class TaskSettingsCapture
     {
         #region Capture / General
 
@@ -452,7 +459,8 @@ namespace ShareX
         #endregion Capture / OCR
     }
 
-    public class TaskSettingsUpload
+    [GenerateDeepCopy]
+    public partial class TaskSettingsUpload
     {
         #region Upload / File naming
 
@@ -484,7 +492,8 @@ namespace ShareX
         #endregion Upload / Uploader filters
     }
 
-    public class TaskSettingsTools
+    [GenerateDeepCopy]
+    public partial class TaskSettingsTools
     {
         public ColorPickerOptions ColorPickerOptions = new ColorPickerOptions();
         public ScreenColorPickerOptions ScreenColorPickerOptions = new ScreenColorPickerOptions();
@@ -500,7 +509,8 @@ namespace ShareX
         public BackgroundRemoverOptions BackgroundRemoverOptions = new BackgroundRemoverOptions();
     }
 
-    public class TaskSettingsAdvanced
+    [GenerateDeepCopy]
+    public partial class TaskSettingsAdvanced
     {
         [Category("General"), DefaultValue(false), Description("Allow after capture tasks for image files by loading them as bitmap when files are handled during file upload, clipboard file upload, drag && drop file upload, watch folder and other image file tasks.")]
         public bool ProcessImagesDuringFileUpload { get; set; }

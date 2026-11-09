@@ -23,13 +23,15 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
 using Avalonia.Media;
 using System.Text.Json.Serialization;
 using ShareX.ImageEditor.Core.Annotations;
 
 namespace ShareX.ImageEditor.Integration
 {
-    public class ImageEditorOptions
+    [GenerateDeepCopy]
+    public partial class ImageEditorOptions
     {
         public static readonly Color PrimaryColor = Color.FromArgb(255, 242, 60, 60);
         public static readonly Color SecondaryColor = Color.FromArgb(255, 250, 250, 250);

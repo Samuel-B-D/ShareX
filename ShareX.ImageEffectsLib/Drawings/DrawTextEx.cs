@@ -31,7 +31,7 @@ using System.Drawing;
 namespace ShareX.ImageEffectsLib
 {
     [Description("Text")]
-    public class DrawTextEx : ImageEffect
+    public partial class DrawTextEx : ImageEffect
     {
         [DefaultValue("Text")]
         public string Text { get; set; }

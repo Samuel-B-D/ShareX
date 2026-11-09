@@ -31,7 +31,7 @@ using System.Drawing;
 namespace ShareX.ImageEffectsLib
 {
     [Description("Background")]
-    public class DrawBackground : ImageEffect
+    public partial class DrawBackground : ImageEffect
     {
         [DefaultColor("Black")]
         public Color Color { get; set; }

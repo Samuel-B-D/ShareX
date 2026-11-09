@@ -25,12 +25,14 @@
 
 #nullable disable
 
+using ShareX.Copying;
 using ShareX.HelpersLib;
 using System.ComponentModel;
 
 namespace ShareX.Tools
 {
-    public class VideoThumbnailOptions
+    [GenerateDeepCopy]
+    public partial class VideoThumbnailOptions
     {
         [Category("Thumbnails"), DefaultValue(ThumbnailLocationType.DefaultFolder), Description("Create thumbnails in default screenshot folder, same folder as the media file or in a custom folder.")]
         public ThumbnailLocationType OutputLocation { get; set; }

@@ -23,12 +23,14 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
 using System.ComponentModel;
 using System.Drawing;
 
 namespace ShareX.HelpersLib
 {
-    public class GradientStop
+    [GenerateDeepCopy]
+    public partial class GradientStop
     {
         [DefaultColor("Black")]
         public Color Color { get; set; } = Color.Black;

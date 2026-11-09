@@ -23,11 +23,13 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
 using System.Drawing;
 
 namespace ShareX.HelpersLib
 {
-    public class WindowState
+    [GenerateDeepCopy]
+    public partial class WindowState
     {
         public Point Location { get; set; }
         public Size Size { get; set; }

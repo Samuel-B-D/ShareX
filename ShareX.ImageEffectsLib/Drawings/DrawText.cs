@@ -31,7 +31,7 @@ using System.Drawing;
 namespace ShareX.ImageEffectsLib
 {
     [Description("Text watermark")]
-    public class DrawText : ImageEffect
+    public partial class DrawText : ImageEffect
     {
         [DefaultValue("Text watermark")]
         public string Text { get; set; }

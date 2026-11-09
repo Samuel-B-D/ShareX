@@ -23,9 +23,12 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
+
 namespace ShareX.ScreenCaptureLib
 {
-    public class ScrollingCaptureOptions
+    [GenerateDeepCopy]
+    public partial class ScrollingCaptureOptions
     {
         public int StartDelay { get; set; } = 300;
         public bool AutoScrollTop { get; set; } = false;

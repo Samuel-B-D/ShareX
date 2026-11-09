@@ -23,9 +23,12 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
+
 namespace ShareX.HelpersLib
 {
-    public class FontSafe
+    [GenerateDeepCopy]
+    public partial class FontSafe
     {
         public string Font { get; set; }
 

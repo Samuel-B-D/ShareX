@@ -23,12 +23,14 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
 using ShareX.HelpersLib;
 using System;
 
 namespace ShareX.ScreenCaptureLib
 {
-    public class FFmpegOptions
+    [GenerateDeepCopy]
+    public partial class FFmpegOptions
     {
         // General
         public bool OverrideCLIPath { get; set; } = false;

@@ -23,9 +23,12 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
+
 namespace ShareX.HelpersLib
 {
-    public class ColorPickerOptions
+    [GenerateDeepCopy]
+    public partial class ColorPickerOptions
     {
         public bool RecentColorsSelected { get; set; } = true;
     }

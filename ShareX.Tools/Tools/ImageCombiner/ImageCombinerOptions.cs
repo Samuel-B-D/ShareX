@@ -23,9 +23,12 @@
 
 #endregion License Information (GPL v3)
 
+using ShareX.Copying;
+
 namespace ShareX.Tools
 {
-    public class ImageCombinerOptions
+    [GenerateDeepCopy]
+    public partial class ImageCombinerOptions
     {
         public ImageCombinerOrientation Orientation { get; set; } = ImageCombinerOrientation.Vertical;
         public ImageCombinerAlignment Alignment { get; set; } = ImageCombinerAlignment.LeftOrTop;
