@@ -23,12 +23,13 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Globalization;
 using System.IO;
+using System.Text.Json;
 
 namespace ShareX.UploadersLib.FileUploaders
 {
@@ -94,7 +95,7 @@ namespace ShareX.UploadersLib.FileUploaders
             {
                 try
                 {
-                    ImgFishResponse response = JsonConvert.DeserializeObject<ImgFishResponse>(result.Response);
+                    ImgFishResponse response = ShareXJson.Deserialize<ImgFishResponse>(result.Response);
 
                     if (!string.IsNullOrEmpty(response?.error))
                     {
@@ -122,7 +123,7 @@ namespace ShareX.UploadersLib.FileUploaders
             return result;
         }
 
-        private sealed class ImgFishResponse
+        internal sealed class ImgFishResponse
         {
             public string link { get; set; }
             public string destroy { get; set; }

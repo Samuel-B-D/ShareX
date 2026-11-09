@@ -23,8 +23,8 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System;
 
 namespace ShareX.UploadersLib.TextUploaders
@@ -74,7 +74,7 @@ namespace ShareX.UploadersLib.TextUploaders
 
                 if (!string.IsNullOrEmpty(ur.Response))
                 {
-                    HastebinResponse response = JsonConvert.DeserializeObject<HastebinResponse>(ur.Response);
+                    HastebinResponse response = ShareXJson.Deserialize<HastebinResponse>(ur.Response);
 
                     if (response != null && !string.IsNullOrEmpty(response.Key))
                     {
@@ -105,7 +105,7 @@ namespace ShareX.UploadersLib.TextUploaders
             return ur;
         }
 
-        private class HastebinResponse
+        internal class HastebinResponse
         {
             public string Key { get; set; }
         }

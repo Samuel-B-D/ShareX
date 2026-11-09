@@ -25,9 +25,9 @@
 
 #nullable disable
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
 using System.ComponentModel;
+using System.Text.Json.Serialization;
 
 namespace ShareX.Tools
 {

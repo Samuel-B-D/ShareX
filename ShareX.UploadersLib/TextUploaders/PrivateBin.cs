@@ -23,8 +23,8 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -33,6 +33,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Nodes;
 
 namespace ShareX.UploadersLib.TextUploaders
 {
@@ -63,17 +64,17 @@ namespace ShareX.UploadersLib.TextUploaders
             var privateBinHelper = new PrivateBinApiHelper(Settings);
             var ct = privateBinHelper.EncryptMessage(text, Settings.PastePassword);
 
-            var meta = new Dictionary<string, object>
+            var meta = new JsonObject
             {
-                { "expire", Settings.Expiration.GetDescription() }
+                ["expire"] = Settings.Expiration.GetDescription()
             };
 
-            var payload = new Dictionary<string, object>
+            var payload = new JsonObject
             {
-                { "adata", privateBinHelper.PrivateBinPasteMetaStruct.Adata },
-                { "meta", meta },
-                { "v", 2 },
-                { "ct", ct }
+                ["adata"] = privateBinHelper.PrivateBinPasteMetaStruct.Adata.DeepClone(),
+                ["meta"] = meta,
+                ["v"] = 2,
+                ["ct"] = ct
             };
 
             var headers = new NameValueCollection
@@ -88,12 +89,12 @@ namespace ShareX.UploadersLib.TextUploaders
                 headers.Add("Authorization", "Basic " + token);
             }
 
-            await SendRequestAsync(HttpMethod.POST, Settings.CustomUrl, JsonConvert.SerializeObject(payload), RequestHelpers.ContentTypeJSON, null, headers,
+            await SendRequestAsync(HttpMethod.POST, Settings.CustomUrl, payload.ToJsonString(ShareXJson.Default), RequestHelpers.ContentTypeJSON, null, headers,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
             if (LastResponseInfo.IsSuccess)
             {
-                var response = JsonConvert.DeserializeObject<Response>(LastResponseInfo.ResponseText);
+                var response = ShareXJson.Deserialize<Response>(LastResponseInfo.ResponseText);
 
                 if (response.Status == 0)
                 {
@@ -113,7 +114,7 @@ namespace ShareX.UploadersLib.TextUploaders
             return result;
         }
 
-        private class Response
+        internal class Response
         {
             public int Status { get; set; }
             public string Id { get; set; }
@@ -132,7 +133,7 @@ namespace ShareX.UploadersLib.TextUploaders
         private class PrivateBinPasteMetaStruct
         {
             private PrivateBinSettings Settings { get; }
-            public List<object> Adata { get; } = [];
+            public JsonArray Adata { get; } = [];
 
             public PrivateBinPasteMetaStruct(PrivateBinApiHelper privatebinApiHelper, PrivateBinSettings settings) : this(settings, Convert.ToBase64String(privatebinApiHelper.Iv), Convert.ToBase64String(privatebinApiHelper.Salt))
             {
@@ -143,8 +144,7 @@ namespace ShareX.UploadersLib.TextUploaders
             {
                 Settings = settings;
 
-                var meta = new List<object>
-                {
+                var meta = new JsonArray(
                     cipherIv,
                     kdfSalt,
                     PrivateBinConstants.CIPHER_ITERATION_COUNT,
@@ -152,18 +152,17 @@ namespace ShareX.UploadersLib.TextUploaders
                     PrivateBinConstants.CIPHER_TAG_BITS,
                     "aes",
                     "cbc",
-                    "none"
-                };
+                    "none");
 
-                Adata.Add(meta);
-                Adata.Add(Settings.Format.GetDescription());
-                Adata.Add(0);
-                Adata.Add(Settings.BurnAfterReading ? 1 : 0);
+                Adata.Add((JsonNode)meta);
+                Adata.Add((JsonNode)Settings.Format.GetDescription());
+                Adata.Add((JsonNode)0);
+                Adata.Add((JsonNode)(Settings.BurnAfterReading ? 1 : 0));
             }
 
             public override string ToString()
             {
-                return JsonConvert.SerializeObject(Adata);
+                return Adata.ToJsonString(ShareXJson.Default);
             }
         }
 
@@ -192,12 +191,12 @@ namespace ShareX.UploadersLib.TextUploaders
                 if (!string.IsNullOrEmpty(pastePassword))
                     pastePasswordBytes = Combine(pastePasswordBytes, Encoding.UTF8.GetBytes(pastePassword));
 
-                var json = new Dictionary<string, string>
+                var json = new JsonObject
                 {
-                    { "paste", message }
+                    ["paste"] = message
                 };
 
-                return CreateCipherText(JsonConvert.SerializeObject(json));
+                return CreateCipherText(json.ToJsonString(ShareXJson.Default));
             }
 
             private static byte[] Combine(params byte[][] arrays)

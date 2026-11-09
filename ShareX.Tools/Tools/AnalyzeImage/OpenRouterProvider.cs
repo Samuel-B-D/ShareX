@@ -25,11 +25,11 @@
 
 #nullable disable
 
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json.Nodes;
 using Image = SkiaSharp.SKBitmap;
 
 namespace ShareX.Tools
@@ -63,26 +63,24 @@ namespace ShareX.Tools
             {
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
-                // Built with JObject instead of serializing anonymous types through reflection (trimming/NativeAOT safe).
-                JObject payload = new JObject
+                // Built with JsonObject instead of serializing anonymous types through reflection (trimming/NativeAOT safe).
+                JsonObject payload = new JsonObject
                 {
                     ["model"] = this.model,
-                    ["messages"] = new JArray
-                    {
-                        new JObject
+                    ["messages"] = new JsonArray(
+                        new JsonObject
                         {
                             ["role"] = "user",
-                            ["content"] = new JArray
-                            {
-                                new JObject { ["type"] = "text", ["text"] = prompt },
-                                new JObject { ["type"] = "image_url", ["image_url"] = new JObject { ["url"] = $"data:image/png;base64,{base64Image}" } }
-                            }
+                            ["content"] = new JsonArray(
+                                new JsonObject { ["type"] = "text", ["text"] = prompt },
+                                new JsonObject { ["type"] = "image_url", ["image_url"] = new JsonObject { ["url"] = $"data:image/png;base64,{base64Image}" } }
+                            )
                         }
-                    },
+                    ),
                     ["max_tokens"] = 1024
                 };
 
-                string jsonPayload = payload.ToString(Formatting.None);
+                string jsonPayload = payload.ToJsonString(ShareXJson.Default);
                 StringContent content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
                 const string url = "https://openrouter.ai/api/v1/chat/completions";
@@ -92,9 +90,9 @@ namespace ShareX.Tools
 
                 if (response.IsSuccessStatusCode)
                 {
-                    // JObject instead of dynamic: the C# runtime binder is not supported under NativeAOT.
-                    JObject responseObject = JObject.Parse(responseString);
-                    return (string)responseObject["choices"][0]["message"]["content"];
+                    // JsonNode instead of dynamic: the C# runtime binder is not supported under NativeAOT.
+                    JsonNode responseObject = ShareXJson.Parse(responseString);
+                    return JsonPath.ToText(responseObject["choices"][0]["message"]["content"]);
                 }
                 else
                 {

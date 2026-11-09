@@ -23,19 +23,25 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
 using SkiaSharp;
 using System.Drawing;
+using System.Text.Json.Serialization;
 
 namespace ShareX.ImageEffectsLib
 {
-    public class ImageEffectPreset
+    public class ImageEffectPreset : IJsonOnDeserialized
     {
         public string Name { get; set; } = "";
 
-        [JsonProperty(ItemTypeNameHandling = TypeNameHandling.Auto)]
+        // Each effect is written with a "$type" property, see ImageEffectJsonConverter.
         public List<ImageEffect> Effects { get; set; } = new List<ImageEffect>();
+
+        void IJsonOnDeserialized.OnDeserialized()
+        {
+            // Effects with an unknown "$type" are read as null.
+            Effects?.RemoveAll(effect => effect == null);
+        }
 
         public SKBitmap ApplyEffects(SKBitmap bmp)
         {

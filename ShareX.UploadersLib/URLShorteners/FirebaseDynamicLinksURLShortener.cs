@@ -23,8 +23,8 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Generic;
 
 namespace ShareX.UploadersLib.URLShorteners
@@ -105,11 +105,11 @@ namespace ShareX.UploadersLib.URLShorteners
                 { "fields", "shortLink" }
             };
 
-            string serializedRequestOptions = JsonConvert.SerializeObject(requestOptions);
+            string serializedRequestOptions = ShareXJson.Serialize(requestOptions);
             result.Response = await SendRequestAsync(HttpMethod.POST, "https://firebasedynamiclinks.googleapis.com/v1/shortLinks", serializedRequestOptions,
                 RequestHelpers.ContentTypeJSON, args, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            FirebaseResponse firebaseResponse = JsonConvert.DeserializeObject<FirebaseResponse>(result.Response);
+            FirebaseResponse firebaseResponse = ShareXJson.Deserialize<FirebaseResponse>(result.Response);
 
             if (firebaseResponse != null)
             {

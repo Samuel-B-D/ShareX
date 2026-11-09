@@ -23,8 +23,8 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 
@@ -74,7 +74,7 @@ namespace ShareX.UploadersLib.TextUploaders
 
                 if (!string.IsNullOrEmpty(result.Response))
                 {
-                    OneTimeSecretResponse jsonResponse = JsonConvert.DeserializeObject<OneTimeSecretResponse>(result.Response);
+                    OneTimeSecretResponse jsonResponse = ShareXJson.Deserialize<OneTimeSecretResponse>(result.Response);
 
                     if (jsonResponse != null)
                     {

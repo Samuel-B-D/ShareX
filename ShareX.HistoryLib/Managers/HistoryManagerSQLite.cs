@@ -24,8 +24,8 @@
 #endregion License Information (GPL v3)
 
 using Microsoft.Data.Sqlite;
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System;
 using System.Collections.Generic;
 
@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS History (
                         ThumbnailURL = reader["ThumbnailURL"].ToString(),
                         DeletionURL = reader["DeletionURL"].ToString(),
                         ShortenedURL = reader["ShortenedURL"].ToString(),
-                        Tags = JsonConvert.DeserializeObject<Dictionary<string, string>>(reader["Tags"]?.ToString() ?? "{}")
+                        Tags = ShareXJson.Deserialize<Dictionary<string, string>>(reader["Tags"]?.ToString() ?? "{}")
                     };
 
                     items.Add(item);
@@ -137,7 +137,7 @@ SELECT last_insert_rowid();";
                         cmd.Parameters.AddWithValue("@ThumbnailURL", item.ThumbnailURL ?? (object)DBNull.Value);
                         cmd.Parameters.AddWithValue("@DeletionURL", item.DeletionURL ?? (object)DBNull.Value);
                         cmd.Parameters.AddWithValue("@ShortenedURL", item.ShortenedURL ?? (object)DBNull.Value);
-                        cmd.Parameters.AddWithValue("@Tags", item.Tags != null ? JsonConvert.SerializeObject(item.Tags) : (object)DBNull.Value);
+                        cmd.Parameters.AddWithValue("@Tags", item.Tags != null ? ShareXJson.Serialize(item.Tags) : (object)DBNull.Value);
                         item.Id = (long)cmd.ExecuteScalar();
                     }
                 }
@@ -175,7 +175,7 @@ WHERE Id = @Id;";
                 cmd.Parameters.AddWithValue("@ThumbnailURL", item.ThumbnailURL ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@DeletionURL", item.DeletionURL ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@ShortenedURL", item.ShortenedURL ?? (object)DBNull.Value);
-                cmd.Parameters.AddWithValue("@Tags", item.Tags != null ? JsonConvert.SerializeObject(item.Tags) : (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("@Tags", item.Tags != null ? ShareXJson.Serialize(item.Tags) : (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@Id", item.Id);
                 cmd.ExecuteNonQuery();
 

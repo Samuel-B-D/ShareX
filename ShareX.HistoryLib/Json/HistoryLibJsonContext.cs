@@ -1,4 +1,4 @@
-﻿#region License Information (GPL v3)
+#region License Information (GPL v3)
 
 /*
     ShareX - A program that allows you to take screenshots and share any file type
@@ -23,24 +23,21 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using System;
+#nullable enable
 
-namespace ShareX.HelpersLib
+using ShareX.HelpersLib.Json;
+using System.Collections.Generic;
+using System.Text.Json.Serialization;
+
+namespace ShareX.HistoryLib
 {
-    public class SafeStringEnumConverter : StringEnumConverter
+    /// <summary>Source generated System.Text.Json metadata for the history file and the SQLite tags column.</summary>
+    [JsonSourceGenerationOptions(IncludeFields = true)]
+    [JsonSerializable(typeof(HistoryItem))]
+    [JsonSerializable(typeof(List<HistoryItem>))]
+    [JsonSerializable(typeof(Dictionary<string, string>))]
+    internal sealed partial class HistoryLibJsonContext : JsonSerializerContext
     {
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
-        {
-            try
-            {
-                return base.ReadJson(reader, objectType, existingValue, serializer);
-            }
-            catch (JsonSerializationException)
-            {
-                return existingValue;
-            }
-        }
+        // Registered with ShareXJson by the ShareX.Roslyn generated ShareXGeneratedRegistration class.
     }
 }

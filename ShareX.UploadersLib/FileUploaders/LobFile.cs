@@ -23,8 +23,8 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -69,7 +69,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (result.IsSuccess)
             {
-                LobFileUploadResponse uploadResponse = JsonConvert.DeserializeObject<LobFileUploadResponse>(result.Response);
+                LobFileUploadResponse uploadResponse = ShareXJson.Deserialize<LobFileUploadResponse>(result.Response);
 
                 if (uploadResponse.Success)
                 {
@@ -95,7 +95,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (!string.IsNullOrEmpty(response))
             {
-                LobFileFetchAPIKeyResponse apiKeyResponse = JsonConvert.DeserializeObject<LobFileFetchAPIKeyResponse>(response);
+                LobFileFetchAPIKeyResponse apiKeyResponse = ShareXJson.Deserialize<LobFileFetchAPIKeyResponse>(response);
 
                 if (apiKeyResponse.Success)
                 {
@@ -110,18 +110,18 @@ namespace ShareX.UploadersLib.FileUploaders
             return null;
         }
 
-        private class LobFileResponse
+        internal class LobFileResponse
         {
             public bool Success { get; set; }
             public string Error { get; set; }
         }
 
-        private class LobFileUploadResponse : LobFileResponse
+        internal class LobFileUploadResponse : LobFileResponse
         {
             public string URL { get; set; }
         }
 
-        private class LobFileFetchAPIKeyResponse : LobFileResponse
+        internal class LobFileFetchAPIKeyResponse : LobFileResponse
         {
             public string API_Key { get; set; }
         }

@@ -6,7 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" />
-    <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="SkiaSharp" />
     <!--
       Existing Windows printing and shell icon interop still require System.Drawing.Common.

@@ -23,7 +23,7 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
+using ShareX.HelpersLib.Json;
 using System.IO;
 
 namespace ShareX.UploadersLib.ImageUploaders
@@ -36,19 +36,19 @@ namespace ShareX.UploadersLib.ImageUploaders
                 cancellationToken: cancellationToken).ConfigureAwait(false);
             if (result.IsSuccess)
             {
-                ImmioResponse response = JsonConvert.DeserializeObject<ImmioResponse>(result.Response);
+                ImmioResponse response = ShareXJson.Deserialize<ImmioResponse>(result.Response);
                 if (response != null) result.URL = response.Payload.Uri;
             }
             return result;
         }
 
-        private class ImmioResponse
+        internal class ImmioResponse
         {
             public bool Success { get; set; }
             public ImmioPayload Payload { get; set; }
         }
 
-        private class ImmioPayload
+        internal class ImmioPayload
         {
             public string Uid { get; set; }
             public string Uri { get; set; }

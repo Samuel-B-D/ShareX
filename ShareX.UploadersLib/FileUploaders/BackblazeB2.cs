@@ -23,9 +23,8 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -36,6 +35,8 @@ using System.Net;
 using System.Net.Mime;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace ShareX.UploadersLib.FileUploaders
 {
@@ -279,7 +280,7 @@ namespace ShareX.UploadersLib.FileUploaders
                 return new B2ApiResult<B2Authorization>(null, StringifyB2Error(res));
             }
 
-            return new B2ApiResult<B2Authorization>(JsonConvert.DeserializeObject<B2Authorization>(res.ResponseText), null);
+            return new B2ApiResult<B2Authorization>(ShareXJson.Deserialize<B2Authorization>(res.ResponseText), null);
         }
 
         /// <summary>
@@ -319,11 +320,11 @@ namespace ShareX.UploadersLib.FileUploaders
                     return new B2ApiResult<string>(null, StringifyB2Error(res));
                 }
 
-                JObject json;
+                JsonNode json;
 
                 try
                 {
-                    json = JObject.Parse(res.ResponseText);
+                    json = ShareXJson.Parse(res.ResponseText);
                 }
                 catch (JsonException e)
                 {
@@ -331,8 +332,8 @@ namespace ShareX.UploadersLib.FileUploaders
                     return new B2ApiResult<string>(null, "B2 upload failed: Couldn't parse b2_list_buckets response.");
                 }
 
-                string bucketId = json.SelectToken("buckets")?.FirstOrDefault(b => b["bucketName"].ToString() == bucketName)?.
-                    SelectToken("bucketId")?.ToString() ?? "";
+                string bucketId = JsonPath.ToText((JsonPath.SelectToken(json, "buckets") as JsonArray)?.
+                    FirstOrDefault(b => JsonPath.ToText(b?["bucketName"]) == bucketName)?["bucketId"]) ?? "";
 
                 return !string.IsNullOrWhiteSpace(bucketId)
                     ? new B2ApiResult<string>(bucketId, null)
@@ -370,7 +371,7 @@ namespace ShareX.UploadersLib.FileUploaders
                     return new B2ApiResult<B2UploadUrl>(null, StringifyB2Error(res));
                 }
 
-                return new B2ApiResult<B2UploadUrl>(JsonConvert.DeserializeObject<B2UploadUrl>(res.ResponseText), null);
+                return new B2ApiResult<B2UploadUrl>(ShareXJson.Deserialize<B2UploadUrl>(res.ResponseText), null);
             }
         }
 
@@ -440,7 +441,7 @@ namespace ShareX.UploadersLib.FileUploaders
             }
 
             DebugHelper.WriteLine($"B2 uploader: B2ApiUploadFile() reports success! '{res.ResponseText}'");
-            return new B2UploadResult((int)res.StatusCode, null, JsonConvert.DeserializeObject<B2Upload>(res.ResponseText));
+            return new B2UploadResult((int)res.StatusCode, null, ShareXJson.Deserialize<B2Upload>(res.ResponseText));
         }
 
         /// <summary>
@@ -503,7 +504,7 @@ namespace ShareX.UploadersLib.FileUploaders
             {
                 string body = res.ResponseText;
                 DebugHelper.WriteLine($"B2 uploader: ParseB2Error() got: {body}");
-                B2Error err = JsonConvert.DeserializeObject<B2Error>(body);
+                B2Error err = ShareXJson.Deserialize<B2Error>(body);
                 return err;
             }
             catch (JsonException)
@@ -537,7 +538,7 @@ namespace ShareX.UploadersLib.FileUploaders
         /// <returns></returns>
         private static Stream CreateJsonBody(Dictionary<string, string> args)
         {
-            string body = JsonConvert.SerializeObject(args);
+            string body = ShareXJson.Serialize(args);
             return new MemoryStream(Encoding.UTF8.GetBytes(body));
         }
 
@@ -586,7 +587,7 @@ namespace ShareX.UploadersLib.FileUploaders
         /// <summary>
         /// The b2_authorize_account API's optional 'allowed' field.
         /// </summary>
-        private class B2Allowed
+        internal class B2Allowed
         {
             public List<string> capabilities { get; }
             public string bucketId { get; }  // may be null!
@@ -603,7 +604,7 @@ namespace ShareX.UploadersLib.FileUploaders
         /// <summary>
         /// A parsed JSON response from the b2_authorize_account API.
         /// </summary>
-        private class B2Authorization
+        internal class B2Authorization
         {
             public string accountId { get; }
             public string apiUrl { get; }
@@ -626,7 +627,7 @@ namespace ShareX.UploadersLib.FileUploaders
         /// <summary>
         /// A parsed JSON response from failed B2 API calls, describing the error.
         /// </summary>
-        private class B2Error
+        internal class B2Error
         {
             public int status { get; }
             public string code { get; }
@@ -643,7 +644,7 @@ namespace ShareX.UploadersLib.FileUploaders
         /// <summary>
         /// A parsed JSON response from the b2_get_upload_url API.
         /// </summary>
-        private class B2UploadUrl
+        internal class B2UploadUrl
         {
             public string bucketId { get; }
             public string uploadUrl { get; }
@@ -660,7 +661,7 @@ namespace ShareX.UploadersLib.FileUploaders
         /// <summary>
         /// A parsed JSON response from the b2_upload_file API.
         /// </summary>
-        private class B2Upload
+        internal class B2Upload
         {
             public string fileId { get; }
             public string fileName { get; }

@@ -23,7 +23,7 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
+using ShareX.HelpersLib.Json;
 using System.Threading.Tasks;
 
 namespace ShareX.HelpersLib
@@ -42,7 +42,7 @@ namespace ShareX.HelpersLib
 
             if (!string.IsNullOrEmpty(response))
             {
-                return JsonConvert.DeserializeObject<AppVeyorProject>(response);
+                return ShareXJson.Deserialize<AppVeyorProject>(response);
             }
 
             return null;
@@ -55,7 +55,7 @@ namespace ShareX.HelpersLib
 
             if (!string.IsNullOrEmpty(response))
             {
-                return JsonConvert.DeserializeObject<AppVeyorProjectArtifact[]>(response);
+                return ShareXJson.Deserialize<AppVeyorProjectArtifact[]>(response);
             }
 
             return null;

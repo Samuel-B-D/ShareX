@@ -23,10 +23,11 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json.Linq;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.Json.Nodes;
 
 namespace ShareX.UploadersLib.FileUploaders
 {
@@ -69,7 +70,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (result.IsSuccess)
             {
-                JToken jsonResponse = JToken.Parse(result.Response);
+                JsonNode jsonResponse = ShareXJson.Parse(result.Response);
 
                 string protocol = "";
                 string domain = "";
@@ -79,11 +80,11 @@ namespace ShareX.UploadersLib.FileUploaders
 
                 if (jsonResponse != null)
                 {
-                    protocol = (string)jsonResponse.SelectToken("protocol");
-                    domain = (string)jsonResponse.SelectToken("domain");
-                    file = (string)jsonResponse.SelectToken("filename");
-                    extension = (string)jsonResponse.SelectToken("extension");
-                    error = (string)jsonResponse.SelectToken("error");
+                    protocol = JsonPath.SelectString(jsonResponse, "protocol");
+                    domain = JsonPath.SelectString(jsonResponse, "domain");
+                    file = JsonPath.SelectString(jsonResponse, "filename");
+                    extension = JsonPath.SelectString(jsonResponse, "extension");
+                    error = JsonPath.SelectString(jsonResponse, "error");
                 }
 
                 if (!string.IsNullOrEmpty(error) || string.IsNullOrEmpty(protocol))

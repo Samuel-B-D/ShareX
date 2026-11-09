@@ -23,18 +23,22 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Text.Json;
 
 namespace ShareX.HistoryLib
 {
     public class HistoryManagerJSON : HistoryManager
     {
         private static readonly object thisLock = new object();
+
+        // Same shape as the previous JObject.ToString() output with DefaultValueHandling.Ignore: indented with two
+        // spaces, null and default values omitted, dates in local time with their offset.
+        private static readonly JsonSerializerOptions historyItemOptions = ShareXJson.Create(indented: true, ignoreDefaults: true);
 
         public HistoryManagerJSON(string filePath) : base(filePath)
         {
@@ -52,7 +56,7 @@ namespace ShareX.HistoryLib
                     {
                         json = "[" + json + "]";
 
-                        return JsonConvert.DeserializeObject<List<HistoryItem>>(json);
+                        return ShareXJson.Deserialize<List<HistoryItem>>(json, ShareXJson.Default);
                     }
                 }
             }
@@ -71,9 +75,6 @@ namespace ShareX.HistoryLib
                     using (FileStream fileStream = new FileStream(filePath, FileMode.Append, FileAccess.Write, FileShare.Read, 4096, FileOptions.WriteThrough))
                     using (StreamWriter streamWriter = new StreamWriter(fileStream))
                     {
-                        JsonSerializer serializer = new JsonSerializer();
-                        serializer.DefaultValueHandling = DefaultValueHandling.Ignore;
-
                         bool firstObject = fileStream.Length == 0;
 
                         foreach (HistoryItem historyItem in historyItems)
@@ -85,7 +86,7 @@ namespace ShareX.HistoryLib
                                 json += ",\r\n";
                             }
 
-                            json += JObject.FromObject(historyItem, serializer).ToString();
+                            json += ShareXJson.Serialize(historyItem, historyItemOptions);
 
                             streamWriter.Write(json);
 

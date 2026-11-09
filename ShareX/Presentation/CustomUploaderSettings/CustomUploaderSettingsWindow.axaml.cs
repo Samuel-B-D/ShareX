@@ -146,15 +146,15 @@ public partial class CustomUploaderSettingsWindow : Window
         if (result == MessageBoxResult.Yes) _viewModel.Clear();
     }
 
-    private void OnBeautifyClick(object? sender, RoutedEventArgs e) => FormatData(Newtonsoft.Json.Formatting.Indented);
-    private void OnMinifyClick(object? sender, RoutedEventArgs e) => FormatData(Newtonsoft.Json.Formatting.None);
+    private void OnBeautifyClick(object? sender, RoutedEventArgs e) => FormatData(true);
+    private void OnMinifyClick(object? sender, RoutedEventArgs e) => FormatData(false);
 
-    private void FormatData(Newtonsoft.Json.Formatting formatting)
+    private void FormatData(bool indented)
     {
         if (_viewModel?.SelectedUploader == null) return;
         try
         {
-            _viewModel.SelectedUploader.FormatData(formatting);
+            _viewModel.SelectedUploader.FormatData(indented);
         }
         catch (Exception exception)
         {

@@ -25,15 +25,16 @@
 
 #nullable disable
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 
 namespace ShareX.Tools
 {
     public class IndexerJson : Indexer
     {
-        private JsonWriter jsonWriter;
+        private Utf8JsonWriter jsonWriter;
 
         public IndexerJson(IndexerSettings indexerSettings) : base(indexerSettings)
         {
@@ -44,19 +45,26 @@ namespace ShareX.Tools
             FolderInfo folderInfo = GetFolderInfo(folderPath);
             folderInfo.Update();
 
-            StringBuilder sbContent = new StringBuilder();
-
-            using (StringWriter sw = new StringWriter(sbContent))
-            using (jsonWriter = new JsonTextWriter(sw))
+            // Same output as the former JsonTextWriter with Formatting.Indented: two space indentation,
+            // platform new lines and non-ASCII characters written as is.
+            JsonWriterOptions writerOptions = new JsonWriterOptions
             {
-                jsonWriter.Formatting = Formatting.Indented;
+                Indented = true,
+                IndentSize = 2,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
 
-                jsonWriter.WriteStartObject();
-                IndexFolder(folderInfo);
-                jsonWriter.WriteEndObject();
+            using (MemoryStream stream = new MemoryStream())
+            {
+                using (jsonWriter = new Utf8JsonWriter(stream, writerOptions))
+                {
+                    jsonWriter.WriteStartObject();
+                    IndexFolder(folderInfo);
+                    jsonWriter.WriteEndObject();
+                }
+
+                return Encoding.UTF8.GetString(stream.ToArray());
             }
-
-            return sbContent.ToString();
         }
 
         protected override void IndexFolder(FolderInfo dir, int level = 0)
@@ -85,21 +93,21 @@ namespace ShareX.Tools
 
             foreach (FileInfo fi in dir.Files)
             {
-                jsonWriter.WriteValue(fi.Name);
+                jsonWriter.WriteStringValue(fi.Name);
             }
 
-            jsonWriter.WriteEnd();
+            jsonWriter.WriteEndArray();
         }
 
         private void IndexFolderParseable(FolderInfo dir)
         {
             jsonWriter.WritePropertyName("Name");
-            jsonWriter.WriteValue(dir.FolderName);
+            jsonWriter.WriteStringValue(dir.FolderName);
 
             if (settings.ShowSizeInfo)
             {
                 jsonWriter.WritePropertyName("Size");
-                jsonWriter.WriteValue(dir.Size.ToSizeString(settings.BinaryUnits));
+                jsonWriter.WriteStringValue(dir.Size.ToSizeString(settings.BinaryUnits));
             }
 
             if (dir.Folders.Count > 0)
@@ -114,7 +122,7 @@ namespace ShareX.Tools
                     jsonWriter.WriteEndObject();
                 }
 
-                jsonWriter.WriteEnd();
+                jsonWriter.WriteEndArray();
             }
 
             if (dir.Files.Count > 0)
@@ -127,18 +135,18 @@ namespace ShareX.Tools
                     jsonWriter.WriteStartObject();
 
                     jsonWriter.WritePropertyName("Name");
-                    jsonWriter.WriteValue(fi.Name);
+                    jsonWriter.WriteStringValue(fi.Name);
 
                     if (settings.ShowSizeInfo)
                     {
                         jsonWriter.WritePropertyName("Size");
-                        jsonWriter.WriteValue(fi.Length.ToSizeString(settings.BinaryUnits));
+                        jsonWriter.WriteStringValue(fi.Length.ToSizeString(settings.BinaryUnits));
                     }
 
                     jsonWriter.WriteEndObject();
                 }
 
-                jsonWriter.WriteEnd();
+                jsonWriter.WriteEndArray();
             }
         }
     }

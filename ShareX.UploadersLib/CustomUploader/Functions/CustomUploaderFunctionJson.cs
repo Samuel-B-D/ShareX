@@ -23,7 +23,7 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json.Linq;
+using ShareX.HelpersLib.Json;
 
 namespace ShareX.UploadersLib
 {
@@ -60,7 +60,7 @@ namespace ShareX.UploadersLib
                     jsonPath = "$." + jsonPath;
                 }
 
-                return (string)JToken.Parse(input).SelectToken(jsonPath);
+                return JsonPath.SelectString(ShareXJson.Parse(input), jsonPath);
             }
 
             return null;

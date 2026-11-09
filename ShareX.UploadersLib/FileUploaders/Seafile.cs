@@ -23,12 +23,13 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
+using System.Text.Json.Serialization;
 using System.Web;
 
 namespace ShareX.UploadersLib.FileUploaders
@@ -95,7 +96,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (!string.IsNullOrEmpty(response))
             {
-                SeafileAuthResponse AuthResult = JsonConvert.DeserializeObject<SeafileAuthResponse>(response);
+                SeafileAuthResponse AuthResult = ShareXJson.Deserialize<SeafileAuthResponse>(response);
 
                 return AuthResult.token;
             }
@@ -165,7 +166,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (!string.IsNullOrEmpty(response))
             {
-                SeafileCheckAccInfoResponse AccInfoResponse = JsonConvert.DeserializeObject<SeafileCheckAccInfoResponse>(response);
+                SeafileCheckAccInfoResponse AccInfoResponse = ShareXJson.Deserialize<SeafileCheckAccInfoResponse>(response);
 
                 return AccInfoResponse;
             }
@@ -190,7 +191,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (!string.IsNullOrEmpty(response))
             {
-                SeafileDefaultLibraryObj JsonResponse = JsonConvert.DeserializeObject<SeafileDefaultLibraryObj>(response);
+                SeafileDefaultLibraryObj JsonResponse = ShareXJson.Deserialize<SeafileDefaultLibraryObj>(response);
 
                 return JsonResponse.repo_id;
             }
@@ -211,7 +212,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (!string.IsNullOrEmpty(response))
             {
-                List<SeafileLibraryObj> JsonResponse = JsonConvert.DeserializeObject<List<SeafileLibraryObj>>(response);
+                List<SeafileLibraryObj> JsonResponse = ShareXJson.Deserialize<List<SeafileLibraryObj>>(response);
 
                 return JsonResponse;
             }
@@ -387,7 +388,7 @@ namespace ShareX.UploadersLib.FileUploaders
         public long size { get; set; }
         public string name { get; set; }
         public string type { get; set; }
-        [JsonProperty("virtual")]
+        [JsonPropertyName("virtual")]
         public string _virtual { get; set; }
         public string desc { get; set; }
         public string root { get; set; }

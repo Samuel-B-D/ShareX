@@ -28,7 +28,6 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Newtonsoft.Json.Serialization;
 using ShareX.AvaloniaUI.Theming;
 using ShareX.HelpersLib;
 using SkiaSharp;
@@ -77,7 +76,6 @@ public sealed partial class ImageEffectsViewModel : ObservableObject, IDisposabl
 {
     private readonly List<ImageEffectPreset> _presets;
     private readonly ImageEffectsCallbacks _callbacks;
-    private readonly ISerializationBinder _serializationBinder = new ImageEffectsSerializationBinder();
     private readonly DispatcherTimer _previewTimer;
     private SKBitmap? _sourceImage;
     private byte[]? _previewImageData;
@@ -443,7 +441,7 @@ public sealed partial class ImageEffectsViewModel : ObservableObject, IDisposabl
     {
         try
         {
-            ImageEffectPreset? preset = JsonHelpers.DeserializeFromString<ImageEffectPreset>(json, _serializationBinder);
+            ImageEffectPreset? preset = JsonHelpers.DeserializeFromString<ImageEffectPreset>(json, ImageEffectJsonConverter.PresetExportOptions);
             if (preset?.Effects == null || preset.Effects.Count == 0) return;
             SanitizeImportedPreset(preset);
             _presets.Add(preset);

@@ -23,7 +23,7 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 using SkiaSharp;
 using System;
 using System.Collections.Generic;

@@ -23,8 +23,8 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
@@ -92,7 +92,7 @@ namespace ShareX.UploadersLib.TextUploaders
 
             if (!string.IsNullOrEmpty(response))
             {
-                OAuth2Token token = JsonConvert.DeserializeObject<OAuth2Token>(response);
+                OAuth2Token token = ShareXJson.Deserialize<OAuth2Token>(response);
 
                 if (token != null && !string.IsNullOrEmpty(token.access_token))
                 {
@@ -133,7 +133,7 @@ namespace ShareX.UploadersLib.TextUploaders
                     }
                 };
 
-                string json = JsonConvert.SerializeObject(gistUpload);
+                string json = ShareXJson.Serialize(gistUpload);
 
                 NameValueCollection headers = new NameValueCollection();
                 headers.Add("Authorization", "token " + AuthInfo.Token.access_token);
@@ -141,7 +141,7 @@ namespace ShareX.UploadersLib.TextUploaders
                 string response = await SendRequestAsync(HttpMethod.POST, url, json, RequestHelpers.ContentTypeJSON, null, headers,
                     cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                GistResponse gistResponse = JsonConvert.DeserializeObject<GistResponse>(response);
+                GistResponse gistResponse = ShareXJson.Deserialize<GistResponse>(response);
 
                 if (response != null)
                 {
@@ -159,25 +159,25 @@ namespace ShareX.UploadersLib.TextUploaders
             return ur;
         }
 
-        private class GistUpload
+        internal class GistUpload
         {
             public string description { get; set; }
             public bool @public { get; set; }
             public Dictionary<string, GistUploadFileInfo> files { get; set; }
         }
 
-        private class GistUploadFileInfo
+        internal class GistUploadFileInfo
         {
             public string content { get; set; }
         }
 
-        private class GistResponse
+        internal class GistResponse
         {
             public string html_url { get; set; }
             public Dictionary<string, GistResponseFileInfo> files { get; set; }
         }
 
-        private class GistResponseFileInfo
+        internal class GistResponseFileInfo
         {
             public string filename { get; set; }
             public string raw_url { get; set; }

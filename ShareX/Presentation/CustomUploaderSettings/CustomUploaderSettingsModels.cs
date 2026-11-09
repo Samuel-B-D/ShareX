@@ -25,7 +25,6 @@
 
 #nullable enable
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
 using ShareX.Localization;
 using ShareX.UploadersLib;
@@ -313,13 +312,13 @@ public sealed class CustomUploaderEditorItem : CustomUploaderNotifyObject
 
     public override string ToString() => Title;
 
-    public void FormatData(Formatting formatting)
+    public void FormatData(bool indented)
     {
         if (string.IsNullOrWhiteSpace(Data)) return;
         Data = Model.Body switch
         {
-            CustomUploaderBody.JSON => Helpers.JSONFormat(Data, formatting),
-            CustomUploaderBody.XML when formatting == Formatting.Indented => Helpers.XMLFormat(Data),
+            CustomUploaderBody.JSON => Helpers.JSONFormat(Data, indented),
+            CustomUploaderBody.XML when indented => Helpers.XMLFormat(Data),
             _ => Data
         };
     }

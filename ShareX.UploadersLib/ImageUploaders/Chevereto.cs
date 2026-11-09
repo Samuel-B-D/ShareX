@@ -23,8 +23,8 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Generic;
 using System.IO;
 
@@ -73,7 +73,7 @@ namespace ShareX.UploadersLib.ImageUploaders
 
             if (result.IsSuccess)
             {
-                CheveretoResponse response = JsonConvert.DeserializeObject<CheveretoResponse>(result.Response);
+                CheveretoResponse response = ShareXJson.Deserialize<CheveretoResponse>(result.Response);
 
                 if (response != null && response.Image != null)
                 {
@@ -89,19 +89,19 @@ namespace ShareX.UploadersLib.ImageUploaders
             return result;
         }
 
-        private class CheveretoResponse
+        internal class CheveretoResponse
         {
             public CheveretoImage Image { get; set; }
         }
 
-        private class CheveretoImage
+        internal class CheveretoImage
         {
             public string URL { get; set; }
             public string URL_Viewer { get; set; }
             public CheveretoThumb Thumb { get; set; }
         }
 
-        private class CheveretoThumb
+        internal class CheveretoThumb
         {
             public string URL { get; set; }
         }

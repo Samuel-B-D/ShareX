@@ -24,7 +24,6 @@
 #endregion License Information (GPL v3)
 
 using Microsoft.Win32;
-using Newtonsoft.Json.Linq;
 using SkiaSharp;
 using System;
 using System.Collections.Generic;
@@ -814,9 +813,9 @@ namespace ShareX.HelpersLib
             return false;
         }
 
-        public static string JSONFormat(string json, Newtonsoft.Json.Formatting formatting)
+        public static string JSONFormat(string json, bool indented)
         {
-            return JToken.Parse(json).ToString(formatting);
+            return Json.ShareXJson.Format(json, indented);
         }
 
         public static string XMLFormat(string xml)

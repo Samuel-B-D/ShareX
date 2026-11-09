@@ -24,7 +24,7 @@
 #endregion License Information (GPL v3)
 
 using Avalonia.Media;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 using ShareX.ImageEditor.Core.Annotations;
 
 namespace ShareX.ImageEditor.Integration

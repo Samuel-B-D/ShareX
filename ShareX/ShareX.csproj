@@ -53,8 +53,6 @@
     <!--
       Keep every type and member of the ShareX assemblies when trimming.
       These assemblies are driven by reflection that cannot be statically annotated:
-      - Newtonsoft.Json walks the whole settings object graph (ApplicationConfig, TaskSettings, UploadersConfig, ...)
-        and resolves image effects by type name (TypeNameHandling.Auto + KnownTypesSerializationBinder).
       - Uploader services, custom uploader functions and image effects are discovered with Assembly.GetTypes().
       - Settings pages are generated from PropertyInfo/TypeDescriptor metadata.
       Framework and third-party assemblies are still trimmed.
@@ -74,7 +72,6 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" />
-    <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="SkiaSharp" />
     <PackageReference Include="ZXing.Net" />
   </ItemGroup>

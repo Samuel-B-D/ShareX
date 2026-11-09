@@ -23,8 +23,8 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Specialized;
 using System.IO;
 
@@ -82,7 +82,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
         private async Task TranscodeFileAsync(UploadResult result, CancellationToken cancellationToken)
         {
-            StreamableTranscodeResponse transcodeResponse = JsonConvert.DeserializeObject<StreamableTranscodeResponse>(result.Response);
+            StreamableTranscodeResponse transcodeResponse = ShareXJson.Deserialize<StreamableTranscodeResponse>(result.Response);
 
             if (!string.IsNullOrEmpty(transcodeResponse.Shortcode))
             {
@@ -93,7 +93,7 @@ namespace ShareX.UploadersLib.FileUploaders
                 {
                     string statusJson = await SendRequestAsync(HttpMethod.GET, URLHelpers.CombineURL(Host, "videos", transcodeResponse.Shortcode),
                         cancellationToken: cancellationToken).ConfigureAwait(false);
-                    StreamableStatusResponse response = JsonConvert.DeserializeObject<StreamableStatusResponse>(statusJson);
+                    StreamableStatusResponse response = ShareXJson.Deserialize<StreamableStatusResponse>(statusJson);
 
                     if (response.status > 2)
                     {

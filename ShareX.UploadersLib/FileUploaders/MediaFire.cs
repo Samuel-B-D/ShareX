@@ -23,8 +23,8 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -186,11 +186,9 @@ namespace ShareX.UploadersLib.FileUploaders
             signatureKey = (int)(((long)signatureKey * 16807) % 2147483647);
         }
 
-        private T DeserializeResponse<T>(string s) where T : new()
+        private T DeserializeResponse<T>(string s)
         {
-            var refObj = new { response = new T() };
-            object obj = JsonConvert.DeserializeObject(s, refObj.GetType());
-            return (T)obj.GetType().GetProperty("response").GetValue(obj, null);
+            return ShareXJson.Deserialize<T>(JsonPath.SelectToken(ShareXJson.Parse(s), "response"));
         }
 
         private static char IntToChar(int x)
@@ -217,7 +215,7 @@ namespace ShareX.UploadersLib.FileUploaders
             return url;
         }
 
-        private class MFResponse
+        internal class MFResponse
         {
             public string result { get; set; }
             public int? error { get; set; }
@@ -225,14 +223,14 @@ namespace ShareX.UploadersLib.FileUploaders
             public string new_key { get; set; }
         }
 
-        private class GetSessionTokenResponse : MFResponse
+        internal class GetSessionTokenResponse : MFResponse
         {
             public string session_token { get; set; }
             public int? secret_key { get; set; }
             public string time { get; set; }
         }
 
-        private class SimpleUploadResponse : MFResponse
+        internal class SimpleUploadResponse : MFResponse
         {
             public DoUpload doupload { get; set; }
 
@@ -243,7 +241,7 @@ namespace ShareX.UploadersLib.FileUploaders
             }
         }
 
-        private class PollUploadResponse : MFResponse
+        internal class PollUploadResponse : MFResponse
         {
             public DoUpload doupload { get; set; }
 

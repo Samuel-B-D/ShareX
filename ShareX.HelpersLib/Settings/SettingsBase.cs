@@ -23,14 +23,14 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
+using ShareX.HelpersLib.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace ShareX.HelpersLib
@@ -189,25 +189,17 @@ namespace ShareX.HelpersLib
 
         private void SaveToStream(Stream stream, bool supportDPAPIEncryption = false, bool leaveOpen = false)
         {
-            using (StreamWriter streamWriter = new StreamWriter(stream, new UTF8Encoding(false, true), 1024, leaveOpen))
-            using (JsonTextWriter jsonWriter = new JsonTextWriter(streamWriter))
+            JsonSerializerOptions options = supportDPAPIEncryption ? ShareXJson.SettingsEncrypted : ShareXJson.Settings;
+
+            using (Utf8JsonWriter jsonWriter = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true, IndentSize = 2, Encoder = options.Encoder }))
             {
-                JsonSerializer serializer = new JsonSerializer();
-
-                if (supportDPAPIEncryption)
-                {
-                    serializer.ContractResolver = new DPAPIEncryptedStringPropertyResolver();
-                }
-                else
-                {
-                    serializer.ContractResolver = new WritablePropertiesOnlyResolver();
-                }
-
-                serializer.Converters.Add(new StringEnumConverter());
-                serializer.DateTimeZoneHandling = DateTimeZoneHandling.Utc;
-                serializer.Formatting = Formatting.Indented;
-                serializer.Serialize(jsonWriter, this);
+                ShareXJson.Serialize(jsonWriter, (T)this, options);
                 jsonWriter.Flush();
+            }
+
+            if (!leaveOpen)
+            {
+                stream.Flush();
             }
         }
 
@@ -262,19 +254,8 @@ namespace ShareX.HelpersLib
                     {
                         if (fileStream.Length > 0)
                         {
-                            T settings;
-
-                            using (StreamReader streamReader = new StreamReader(fileStream))
-                            using (JsonTextReader jsonReader = new JsonTextReader(streamReader))
-                            {
-                                JsonSerializer serializer = new JsonSerializer();
-                                serializer.ContractResolver = new DPAPIEncryptedStringPropertyResolver();
-                                serializer.Converters.Add(new StringEnumConverter());
-                                serializer.DateTimeZoneHandling = DateTimeZoneHandling.Local;
-                                serializer.ObjectCreationHandling = ObjectCreationHandling.Replace;
-                                serializer.Error += Serializer_Error;
-                                settings = serializer.Deserialize<T>(jsonReader);
-                            }
+                            // Source generated metadata (see ShareXJson); unknown enum names keep their default value.
+                            T settings = ShareXJson.Deserialize<T>(fileStream, ShareXJson.Settings);
 
                             if (settings == null)
                             {
@@ -313,13 +294,5 @@ namespace ShareX.HelpersLib
             return new T();
         }
 
-        private static void Serializer_Error(object sender, Newtonsoft.Json.Serialization.ErrorEventArgs e)
-        {
-            // Handle missing enum values
-            if (e.ErrorContext.Error.Message.StartsWith("Error converting value"))
-            {
-                e.ErrorContext.Handled = true;
-            }
-        }
     }
 }

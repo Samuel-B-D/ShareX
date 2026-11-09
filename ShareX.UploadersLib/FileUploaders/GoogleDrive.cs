@@ -23,11 +23,12 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
+using ShareX.HelpersLib.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
+using System.Text.Json.Nodes;
 using System.Web;
 
 namespace ShareX.UploadersLib.FileUploaders
@@ -108,7 +109,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
         private string GetMetadata(string name, string parentID, string driveID = "")
         {
-            object metadata;
+            JsonObject metadata;
 
             // If there's no parent folder, the drive behaves as parent
             if (string.IsNullOrEmpty(parentID))
@@ -118,25 +119,25 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (!string.IsNullOrEmpty(parentID))
             {
-                metadata = new
+                metadata = new JsonObject
                 {
-                    name = name,
-                    driveId = driveID,
-                    parents = new[]
+                    ["name"] = name,
+                    ["driveId"] = driveID,
+                    ["parents"] = new JsonArray
                     {
-                        parentID
+                        (JsonNode)parentID
                     }
                 };
             }
             else
             {
-                metadata = new
+                metadata = new JsonObject
                 {
-                    name = name
+                    ["name"] = name
                 };
             }
 
-            return JsonConvert.SerializeObject(metadata);
+            return metadata.ToJsonString(ShareXJson.Default);
         }
 
         private async Task SetPermissionsAsync(string fileID, GoogleDrivePermissionRole role, GoogleDrivePermissionType type,
@@ -146,12 +147,12 @@ namespace ShareX.UploadersLib.FileUploaders
 
             string url = string.Format("https://www.googleapis.com/drive/v3/files/{0}/permissions?supportsAllDrives=true", fileID);
 
-            string json = JsonConvert.SerializeObject(new
+            string json = new JsonObject
             {
-                role = role.ToString(),
-                type = type.ToString(),
-                allowFileDiscovery = allowFileDiscovery.ToString()
-            });
+                ["role"] = role.ToString(),
+                ["type"] = type.ToString(),
+                ["allowFileDiscovery"] = allowFileDiscovery.ToString()
+            }.ToJsonString(ShareXJson.Default);
 
             await SendRequestAsync(HttpMethod.POST, url, json, RequestHelpers.ContentTypeJSON, null, OAuth2.GetAuthHeaders(),
                 cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -198,7 +199,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
                 if (!string.IsNullOrEmpty(response))
                 {
-                    GoogleDriveFileList fileList = JsonConvert.DeserializeObject<GoogleDriveFileList>(response);
+                    GoogleDriveFileList fileList = ShareXJson.Deserialize<GoogleDriveFileList>(response);
 
                     if (fileList != null)
                     {
@@ -230,7 +231,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
                 if (!string.IsNullOrEmpty(response))
                 {
-                    GoogleDriveSharedDriveList driveList = JsonConvert.DeserializeObject<GoogleDriveSharedDriveList>(response);
+                    GoogleDriveSharedDriveList driveList = ShareXJson.Deserialize<GoogleDriveSharedDriveList>(response);
 
                     if (driveList != null)
                     {
@@ -256,7 +257,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (!string.IsNullOrEmpty(result.Response))
             {
-                GoogleDriveFile upload = JsonConvert.DeserializeObject<GoogleDriveFile>(result.Response);
+                GoogleDriveFile upload = ShareXJson.Deserialize<GoogleDriveFile>(result.Response);
 
                 if (upload != null)
                 {

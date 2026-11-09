@@ -23,11 +23,11 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.Json.Nodes;
 
 namespace ShareX.UploadersLib.ImageUploaders
 {
@@ -75,7 +75,7 @@ namespace ShareX.UploadersLib.ImageUploaders
 
                 if (!string.IsNullOrEmpty(response))
                 {
-                    ImageShackLoginResponse resp = JsonConvert.DeserializeObject<ImageShackLoginResponse>(response);
+                    ImageShackLoginResponse resp = ShareXJson.Deserialize<ImageShackLoginResponse>(response);
 
                     if (resp != null && resp.result != null && !string.IsNullOrEmpty(resp.result.auth_token))
                     {
@@ -100,15 +100,15 @@ namespace ShareX.UploadersLib.ImageUploaders
 
             if (!string.IsNullOrEmpty(result.Response))
             {
-                JToken jsonResponse = JToken.Parse(result.Response);
+                JsonNode jsonResponse = ShareXJson.Parse(result.Response);
 
                 if (jsonResponse != null)
                 {
-                    bool isSuccess = jsonResponse["success"].Value<bool>();
+                    bool isSuccess = bool.TryParse(JsonPath.ToText(jsonResponse["success"]), out bool success) && success;
 
                     if (isSuccess)
                     {
-                        ImageShackUploadResult uploadResult = jsonResponse["result"].ToObject<ImageShackUploadResult>();
+                        ImageShackUploadResult uploadResult = ShareXJson.Deserialize<ImageShackUploadResult>(jsonResponse["result"]);
 
                         if (uploadResult != null && uploadResult.images.Count > 0)
                         {
@@ -120,7 +120,7 @@ namespace ShareX.UploadersLib.ImageUploaders
                     }
                     else
                     {
-                        ImageShackErrorInfo errorInfo = jsonResponse["error"].ToObject<ImageShackErrorInfo>();
+                        ImageShackErrorInfo errorInfo = ShareXJson.Deserialize<ImageShackErrorInfo>(jsonResponse["error"]);
                         Errors.Add(errorInfo.ToString());
                     }
                 }

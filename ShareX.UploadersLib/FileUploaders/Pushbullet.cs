@@ -23,13 +23,14 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
+using System.Text.Json.Serialization;
 
 namespace ShareX.UploadersLib.FileUploaders
 {
@@ -78,7 +79,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (uploadRequest == null) return null;
 
-            PushbulletResponseFileUpload fileInfo = JsonConvert.DeserializeObject<PushbulletResponseFileUpload>(uploadRequest);
+            PushbulletResponseFileUpload fileInfo = ShareXJson.Deserialize<PushbulletResponseFileUpload>(uploadRequest);
 
             if (fileInfo == null) return null;
 
@@ -109,7 +110,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (pushResult == null) return null;
 
-            PushbulletResponsePush push = JsonConvert.DeserializeObject<PushbulletResponsePush>(pushResult);
+            PushbulletResponsePush push = ShareXJson.Deserialize<PushbulletResponsePush>(pushResult);
 
             if (push != null)
                 uploadResult.URL = wwwPushesURL + "?push_iden=" + push.iden;
@@ -141,7 +142,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (response == null) return null;
 
-            PushbulletResponsePush push = JsonConvert.DeserializeObject<PushbulletResponsePush>(response);
+            PushbulletResponsePush push = ShareXJson.Deserialize<PushbulletResponsePush>(response);
 
             if (push != null)
                 return wwwPushesURL + "?push_iden=" + push.iden;
@@ -175,7 +176,7 @@ namespace ShareX.UploadersLib.FileUploaders
             string response = await SendRequestAsync(HttpMethod.GET, apiGetDevicesURL, headers: headers,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            PushbulletResponseDevices devicesResponse = JsonConvert.DeserializeObject<PushbulletResponseDevices>(response);
+            PushbulletResponseDevices devicesResponse = ShareXJson.Deserialize<PushbulletResponseDevices>(response);
 
             if (devicesResponse != null && devicesResponse.devices != null)
             {
@@ -185,18 +186,18 @@ namespace ShareX.UploadersLib.FileUploaders
             return new List<PushbulletDevice>();
         }
 
-        private class PushbulletResponseDevices
+        internal class PushbulletResponseDevices
         {
             public List<PushbulletResponseDevice> devices { get; set; }
         }
 
-        private class PushbulletResponseDevice
+        internal class PushbulletResponseDevice
         {
             public string iden { get; set; }
             public string nickname { get; set; }
         }
 
-        private class PushbulletResponsePush
+        internal class PushbulletResponsePush
         {
             public string iden { get; set; }
             public string device_iden { get; set; }
@@ -204,14 +205,14 @@ namespace ShareX.UploadersLib.FileUploaders
             public long created { get; set; }
         }
 
-        private class PushbulletResponsePushData
+        internal class PushbulletResponsePushData
         {
             public string type { get; set; }
             public string title { get; set; }
             public string body { get; set; }
         }
 
-        private class PushbulletResponseFileUpload
+        internal class PushbulletResponseFileUpload
         {
             public string file_type { get; set; }
             public string file_name { get; set; }
@@ -220,14 +221,14 @@ namespace ShareX.UploadersLib.FileUploaders
             public PushbulletResponseFileUploadData data { get; set; }
         }
 
-        private class PushbulletResponseFileUploadData
+        internal class PushbulletResponseFileUploadData
         {
             public string awsaccesskeyid { get; set; }
             public string acl { get; set; }
             public string key { get; set; }
             public string signature { get; set; }
             public string policy { get; set; }
-            [JsonProperty("content-type")]
+            [JsonPropertyName("content-type")]
             public string content_type { get; set; }
         }
     }

@@ -23,19 +23,22 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
+using ShareX.HelpersLib.Json;
 using ShareX.ImageEffectsLib.Localization;
 using SkiaSharp;
 using System.ComponentModel;
+using System.Text.Json.Serialization;
 
 namespace ShareX.ImageEffectsLib
 {
+    // Not inherited by the concrete effect types, so the converter can serialize them with their own metadata.
+    [JsonConverter(typeof(ImageEffectJsonConverter))]
     public abstract class ImageEffect
     {
         [DefaultValue(true), Browsable(false)]
         public bool Enabled { get; set; }
 
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonIgnoreDefault]
         [DefaultValue(""), Browsable(false)]
         public string Name { get; set; }
 

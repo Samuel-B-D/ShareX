@@ -27,7 +27,6 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
-using Newtonsoft.Json.Serialization;
 using ShareX.AvaloniaUI.Theming;
 using ShareX.HelpersLib;
 
@@ -37,7 +36,6 @@ namespace ShareX.ImageEffectsLib;
 
 public partial class ImageEffectsWindow : Window
 {
-    private readonly ISerializationBinder _serializationBinder = new ImageEffectsSerializationBinder();
     private ImageEffectOptionsPanel _effectOptionsPanel = null!;
     public ImageEffectsViewModel ViewModel { get; }
     public bool Accepted { get; private set; }
@@ -127,7 +125,7 @@ public partial class ImageEffectsWindow : Window
 
         try
         {
-            string json = JsonHelpers.SerializeToString(preset, serializationBinder: _serializationBinder);
+            string json = JsonHelpers.SerializeToString(preset, ImageEffectJsonConverter.PresetExportOptions);
             string effectsFolder = HelpersOptions.ShareXSpecialFolders["ShareXImageEffects"];
             await new ImageEffectPackagerWindow(json, preset.Name, effectsFolder).ShowDialog(this);
         }

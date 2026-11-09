@@ -23,7 +23,7 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
+using ShareX.HelpersLib.Json;
 using System.Collections.Generic;
 using System.IO;
 
@@ -58,7 +58,7 @@ namespace ShareX.UploadersLib.ImageUploaders
 
             if (result.IsSuccess)
             {
-                VgymeResponse response = JsonConvert.DeserializeObject<VgymeResponse>(result.Response);
+                VgymeResponse response = ShareXJson.Deserialize<VgymeResponse>(result.Response);
 
                 if (response != null && !response.Error)
                 {
@@ -70,7 +70,7 @@ namespace ShareX.UploadersLib.ImageUploaders
             return result;
         }
 
-        private class VgymeResponse
+        internal class VgymeResponse
         {
             public bool Error { get; set; }
             public string URL { get; set; }

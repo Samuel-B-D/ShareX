@@ -23,9 +23,10 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
+using ShareX.HelpersLib.Json;
 using System.Collections.Specialized;
 using System.IO;
+using System.Text.Json.Serialization;
 
 namespace ShareX.UploadersLib.FileUploaders
 {
@@ -71,7 +72,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
                 if (result.IsSuccess)
                 {
-                    HostrFileUploadResponse response = JsonConvert.DeserializeObject<HostrFileUploadResponse>(result.Response);
+                    HostrFileUploadResponse response = ShareXJson.Deserialize<HostrFileUploadResponse>(result.Response);
 
                     if (response != null)
                     {
@@ -104,10 +105,10 @@ namespace ShareX.UploadersLib.FileUploaders
 
         public class HostrFileUploadResponseDirect
         {
-            [JsonProperty("150x")]
+            [JsonPropertyName("150x")]
             public string direct_150x { get; set; }
 
-            [JsonProperty("930x")]
+            [JsonPropertyName("930x")]
             public string direct_930x { get; set; }
         }
     }

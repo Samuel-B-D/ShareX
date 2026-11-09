@@ -23,8 +23,8 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Generic;
 using System.IO;
 
@@ -61,7 +61,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (result.IsSuccess)
             {
-                PomfResponse response = JsonConvert.DeserializeObject<PomfResponse>(result.Response);
+                PomfResponse response = ShareXJson.Deserialize<PomfResponse>(result.Response);
 
                 if (response.success && response.files != null && response.files.Count > 0)
                 {
@@ -80,14 +80,14 @@ namespace ShareX.UploadersLib.FileUploaders
             return result;
         }
 
-        private class PomfResponse
+        internal class PomfResponse
         {
             public bool success { get; set; }
             public object error { get; set; }
             public List<PomfFile> files { get; set; }
         }
 
-        private class PomfFile
+        internal class PomfFile
         {
             public string hash { get; set; }
             public string name { get; set; }

@@ -23,7 +23,7 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
+using ShareX.HelpersLib.Json;
 using System.IO;
 
 namespace ShareX.UploadersLib.FileUploaders
@@ -122,14 +122,14 @@ namespace ShareX.UploadersLib.FileUploaders
                 }
             };
 
-            string metadata = JsonConvert.SerializeObject(uploadVideo);
+            string metadata = ShareXJson.Serialize(uploadVideo);
 
             UploadResult result = await SendRequestFileAsync("https://www.googleapis.com/upload/youtube/v3/videos?part=id,snippet,status", stream, fileName, "file",
                 headers: OAuth2.GetAuthHeaders(), relatedData: metadata, cancellationToken: cancellationToken).ConfigureAwait(false);
 
             if (!string.IsNullOrEmpty(result.Response))
             {
-                YouTubeVideoResponse responseVideo = JsonConvert.DeserializeObject<YouTubeVideoResponse>(result.Response);
+                YouTubeVideoResponse responseVideo = ShareXJson.Deserialize<YouTubeVideoResponse>(result.Response);
 
                 if (responseVideo != null)
                 {

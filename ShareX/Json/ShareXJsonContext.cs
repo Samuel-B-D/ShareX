@@ -1,4 +1,4 @@
-﻿#region License Information (GPL v3)
+#region License Information (GPL v3)
 
 /*
     ShareX - A program that allows you to take screenshots and share any file type
@@ -23,20 +23,21 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using ShareX.HelpersLib.Json;
+using System.Text.Json.Serialization;
 
-namespace ShareX.HelpersLib
+namespace ShareX
 {
-    public class WritablePropertiesOnlyResolver : DefaultContractResolver
+    /// <summary>
+    /// Source generated System.Text.Json metadata for the ShareX settings files and the other JSON the ShareX project reads.
+    /// The generator walks the whole settings graph (task settings, image effect presets, theme options, ...).
+    /// </summary>
+    [JsonSourceGenerationOptions(IncludeFields = true)]
+    [JsonSerializable(typeof(ApplicationConfig))]
+    [JsonSerializable(typeof(HotkeysConfig))]
+    [JsonSerializable(typeof(NativeMessagingInput))]
+    internal sealed partial class ShareXJsonContext : JsonSerializerContext
     {
-        protected override IList<JsonProperty> CreateProperties(Type type, MemberSerialization memberSerialization)
-        {
-            IList<JsonProperty> props = base.CreateProperties(type, memberSerialization);
-            return props.Where(p => p.Writable).ToList();
-        }
+        // Registered with ShareXJson by the ShareX.Roslyn generated ShareXGeneratedRegistration class.
     }
 }

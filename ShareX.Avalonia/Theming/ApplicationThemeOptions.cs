@@ -27,6 +27,7 @@ using Avalonia.Media;
 using ShareX.Icons;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 
 namespace ShareX.AvaloniaUI.Theming;
 
@@ -61,6 +62,8 @@ public sealed class ApplicationThemeOptions : INotifyPropertyChanged
         set => SetField(ref _accentColorHex, value);
     }
 
+    // Stored as AccentColorHex.
+    [JsonIgnore]
     public Color AccentColor
     {
         get => Color.TryParse(AccentColorHex, out Color color) && color.A > 0
@@ -68,9 +71,6 @@ public sealed class ApplicationThemeOptions : INotifyPropertyChanged
             : Color.Parse(DefaultAccentColorHex);
         set => AccentColorHex = $"#{value.A:X2}{value.R:X2}{value.G:X2}{value.B:X2}";
     }
-
-    // Newtonsoft.Json convention used by ApplicationConfig without coupling this project to Newtonsoft.Json.
-    public bool ShouldSerializeAccentColor() => false;
 
     public bool UseSystemAccentColor
     {

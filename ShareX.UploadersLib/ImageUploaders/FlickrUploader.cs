@@ -23,8 +23,8 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
@@ -94,7 +94,7 @@ namespace ShareX.UploadersLib.ImageUploaders
 
             string response = await SendRequestAsync(HttpMethod.GET, query, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            return JsonConvert.DeserializeObject<FlickrPhotosGetSizesResponse>(response);
+            return ShareXJson.Deserialize<FlickrPhotosGetSizesResponse>(response);
         }
 
         protected override async Task<UploadResult> UploadCoreAsync(Stream stream, string fileName, CancellationToken cancellationToken)

@@ -23,8 +23,8 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Specialized;
 
 namespace ShareX.UploadersLib.URLShorteners
@@ -82,7 +82,7 @@ namespace ShareX.UploadersLib.URLShorteners
                 domain = Settings.Domain
             };
 
-            string json = JsonConvert.SerializeObject(body);
+            string json = ShareXJson.Serialize(body);
 
             NameValueCollection headers = new NameValueCollection();
             headers.Add("X-API-KEY", Settings.APIKey);
@@ -92,7 +92,7 @@ namespace ShareX.UploadersLib.URLShorteners
 
             if (!string.IsNullOrEmpty(response))
             {
-                KuttShortenLinkResponse shortenLinkResponse = JsonConvert.DeserializeObject<KuttShortenLinkResponse>(response);
+                KuttShortenLinkResponse shortenLinkResponse = ShareXJson.Deserialize<KuttShortenLinkResponse>(response);
 
                 if (shortenLinkResponse != null)
                 {
@@ -103,7 +103,7 @@ namespace ShareX.UploadersLib.URLShorteners
             return null;
         }
 
-        private class KuttShortenLinkBody
+        internal class KuttShortenLinkBody
         {
             /// <summary>Original long URL to be shortened.</summary>
             public string target { get; set; }
@@ -120,7 +120,7 @@ namespace ShareX.UploadersLib.URLShorteners
             public string domain { get; set; }
         }
 
-        private class KuttShortenLinkResponse
+        internal class KuttShortenLinkResponse
         {
             /// <summary>Unique ID of the URL</summary>
             public string id { get; set; }

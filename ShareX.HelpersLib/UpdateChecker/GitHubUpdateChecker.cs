@@ -23,7 +23,7 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
+using ShareX.HelpersLib.Json;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -96,7 +96,7 @@ namespace ShareX.HelpersLib
 
             if (!string.IsNullOrEmpty(response))
             {
-                releases = JsonConvert.DeserializeObject<List<GitHubRelease>>(response);
+                releases = ShareXJson.Deserialize<List<GitHubRelease>>(response);
 
                 if (releases != null && releases.Count > 0)
                 {
@@ -115,7 +115,7 @@ namespace ShareX.HelpersLib
 
             if (!string.IsNullOrEmpty(response))
             {
-                latestRelease = JsonConvert.DeserializeObject<GitHubRelease>(response);
+                latestRelease = ShareXJson.Deserialize<GitHubRelease>(response);
             }
 
             return latestRelease;
@@ -223,7 +223,7 @@ namespace ShareX.HelpersLib
             return null;
         }
 
-        protected class GitHubRelease
+        protected internal class GitHubRelease
         {
             public string url { get; set; }
             public string assets_url { get; set; }
@@ -246,7 +246,7 @@ namespace ShareX.HelpersLib
             //public GitHubReactions reactions { get; set; }
         }
 
-        protected class GitHubAsset
+        protected internal class GitHubAsset
         {
             public string url { get; set; }
             public long id { get; set; }

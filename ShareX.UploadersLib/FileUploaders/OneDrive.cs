@@ -23,12 +23,13 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
+using System.Text.Json.Nodes;
 
 namespace ShareX.UploadersLib.FileUploaders
 {
@@ -108,7 +109,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (!string.IsNullOrEmpty(response))
             {
-                OAuth2Token token = JsonConvert.DeserializeObject<OAuth2Token>(response);
+                OAuth2Token token = ShareXJson.Deserialize<OAuth2Token>(response);
 
                 if (token != null && !string.IsNullOrEmpty(token.access_token))
                 {
@@ -136,7 +137,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
                 if (!string.IsNullOrEmpty(response))
                 {
-                    OAuth2Token token = JsonConvert.DeserializeObject<OAuth2Token>(response);
+                    OAuth2Token token = ShareXJson.Deserialize<OAuth2Token>(response);
 
                     if (token != null && !string.IsNullOrEmpty(token.access_token))
                     {
@@ -196,13 +197,13 @@ namespace ShareX.UploadersLib.FileUploaders
 
         private async Task<string> CreateSessionAsync(string fileName, CancellationToken cancellationToken)
         {
-            string json = JsonConvert.SerializeObject(new
+            string json = new JsonObject
             {
-                item = new Dictionary<string, string>
+                ["item"] = new JsonObject
                 {
-                    { "@microsoft.graph.conflictBehavior", "replace" }
+                    ["@microsoft.graph.conflictBehavior"] = "replace"
                 }
-            });
+            }.ToJsonString(ShareXJson.Default);
 
             string folderPath = GetFolderUrl(FolderID);
 
@@ -213,7 +214,7 @@ namespace ShareX.UploadersLib.FileUploaders
                 cancellationToken: cancellationToken).ConfigureAwait(false);
             AllowReportProgress = true;
 
-            OneDriveUploadSession session = JsonConvert.DeserializeObject<OneDriveUploadSession>(response);
+            OneDriveUploadSession session = ShareXJson.Deserialize<OneDriveUploadSession>(response);
 
             if (session != null)
             {
@@ -250,7 +251,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (result.IsSuccess)
             {
-                OneDriveFileInfo uploadInfo = JsonConvert.DeserializeObject<OneDriveFileInfo>(result.Response);
+                OneDriveFileInfo uploadInfo = ShareXJson.Deserialize<OneDriveFileInfo>(result.Response);
 
                 if (AutoCreateShareableLink)
                 {
@@ -287,16 +288,16 @@ namespace ShareX.UploadersLib.FileUploaders
                     break;
             }
 
-            string json = JsonConvert.SerializeObject(new
+            string json = new JsonObject
             {
-                type = linkTypeValue,
-                scope = "anonymous"
-            });
+                ["type"] = linkTypeValue,
+                ["scope"] = "anonymous"
+            }.ToJsonString(ShareXJson.Default);
 
             string response = await SendRequestAsync(HttpMethod.POST, $"https://graph.microsoft.com/v1.0/me/drive/items/{id}/createLink", json,
                 RequestHelpers.ContentTypeJSON, headers: GetAuthHeaders(), cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            OneDrivePermission permissionInfo = JsonConvert.DeserializeObject<OneDrivePermission>(response);
+            OneDrivePermission permissionInfo = ShareXJson.Deserialize<OneDrivePermission>(response);
 
             if (permissionInfo != null && permissionInfo.link != null)
             {
@@ -321,7 +322,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (response != null)
             {
-                OneDriveFileList pathInfo = JsonConvert.DeserializeObject<OneDriveFileList>(response);
+                OneDriveFileList pathInfo = ShareXJson.Deserialize<OneDriveFileList>(response);
                 return pathInfo;
             }
 

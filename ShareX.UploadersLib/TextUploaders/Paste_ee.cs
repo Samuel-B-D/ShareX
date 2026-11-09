@@ -23,7 +23,7 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
+using ShareX.HelpersLib.Json;
 using System;
 using System.Collections.Specialized;
 
@@ -92,7 +92,7 @@ namespace ShareX.UploadersLib.TextUploaders
                     }
                 };
 
-                string json = JsonConvert.SerializeObject(requestBody);
+                string json = ShareXJson.Serialize(requestBody);
 
                 NameValueCollection headers = new NameValueCollection();
                 headers.Add("X-Auth-Token", APIKey);
@@ -102,7 +102,7 @@ namespace ShareX.UploadersLib.TextUploaders
 
                 if (!string.IsNullOrEmpty(ur.Response))
                 {
-                    Paste_eeSubmitResponse response = JsonConvert.DeserializeObject<Paste_eeSubmitResponse>(ur.Response);
+                    Paste_eeSubmitResponse response = ShareXJson.Deserialize<Paste_eeSubmitResponse>(ur.Response);
 
                     ur.URL = response.link;
                 }

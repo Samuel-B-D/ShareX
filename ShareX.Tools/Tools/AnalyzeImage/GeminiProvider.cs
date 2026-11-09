@@ -25,10 +25,10 @@
 
 #nullable disable
 
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Text;
+using System.Text.Json.Nodes;
 using Image = SkiaSharp.SKBitmap;
 
 namespace ShareX.Tools
@@ -60,23 +60,21 @@ namespace ShareX.Tools
         {
             using (HttpClient client = new HttpClient())
             {
-                // Built with JObject instead of serializing anonymous types through reflection (trimming/NativeAOT safe).
-                JObject payload = new JObject
+                // Built with JsonObject instead of serializing anonymous types through reflection (trimming/NativeAOT safe).
+                JsonObject payload = new JsonObject
                 {
-                    ["contents"] = new JArray
-                    {
-                        new JObject
+                    ["contents"] = new JsonArray(
+                        new JsonObject
                         {
-                            ["parts"] = new JArray
-                            {
-                                new JObject { ["text"] = prompt },
-                                new JObject { ["inline_data"] = new JObject { ["mime_type"] = "image/png", ["data"] = base64Image } }
-                            }
+                            ["parts"] = new JsonArray(
+                                new JsonObject { ["text"] = prompt },
+                                new JsonObject { ["inline_data"] = new JsonObject { ["mime_type"] = "image/png", ["data"] = base64Image } }
+                            )
                         }
-                    }
+                    )
                 };
 
-                string jsonPayload = payload.ToString(Formatting.None);
+                string jsonPayload = payload.ToJsonString(ShareXJson.Default);
                 StringContent content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
                 string url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
@@ -86,9 +84,9 @@ namespace ShareX.Tools
 
                 if (response.IsSuccessStatusCode)
                 {
-                    // JObject instead of dynamic: the C# runtime binder is not supported under NativeAOT.
-                    JObject responseObject = JObject.Parse(responseString);
-                    return (string)responseObject["candidates"][0]["content"]["parts"][0]["text"];
+                    // JsonNode instead of dynamic: the C# runtime binder is not supported under NativeAOT.
+                    JsonNode responseObject = ShareXJson.Parse(responseString);
+                    return JsonPath.ToText(responseObject["candidates"][0]["content"]["parts"][0]["text"]);
                 }
                 else
                 {

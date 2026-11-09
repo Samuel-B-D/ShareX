@@ -26,6 +26,7 @@
 #nullable enable
 
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using ShareX.Icons;
 using ShareX.Localization;
 using ShareX.UploadersLib;
@@ -332,7 +333,7 @@ public sealed class CustomUploaderSettingsViewModel : CustomUploaderNotifyObject
 
         try
         {
-            JsonHelpers.SerializeToFile(item, filePath, Newtonsoft.Json.DefaultValueHandling.Ignore, Newtonsoft.Json.NullValueHandling.Ignore);
+            JsonHelpers.SerializeToFile(item, filePath, ShareXJson.IgnoreDefaults);
             StatusMessage = string.Format(Strings.CustomUploaderSettingsWindow_ExportedOne, item);
             return null;
         }
@@ -516,7 +517,7 @@ public sealed class CustomUploaderSettingsViewModel : CustomUploaderNotifyObject
     {
         try
         {
-            JsonHelpers.SerializeToFile(item, filePath, Newtonsoft.Json.DefaultValueHandling.Ignore, Newtonsoft.Json.NullValueHandling.Ignore);
+            JsonHelpers.SerializeToFile(item, filePath, ShareXJson.IgnoreDefaults);
             return true;
         }
         catch (Exception exception)

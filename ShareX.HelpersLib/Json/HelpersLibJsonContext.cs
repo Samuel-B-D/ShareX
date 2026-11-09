@@ -1,4 +1,4 @@
-﻿#region License Information (GPL v3)
+#region License Information (GPL v3)
 
 /*
     ShareX - A program that allows you to take screenshots and share any file type
@@ -23,15 +23,24 @@
 
 #endregion License Information (GPL v3)
 
-using ShareX.HelpersLib;
+#nullable enable
 
-namespace ShareX.ImageEffectsLib
+using System.Collections.Generic;
+using System.Text.Json.Serialization;
+
+namespace ShareX.HelpersLib.Json
 {
-    public class ImageEffectsSerializationBinder : KnownTypesSerializationBinder
+    /// <summary>Source generated System.Text.Json metadata for the types ShareX.HelpersLib serializes itself.</summary>
+    [JsonSourceGenerationOptions(IncludeFields = true)]
+    [JsonSerializable(typeof(GitHubUpdateChecker.GitHubRelease))]
+    [JsonSerializable(typeof(List<GitHubUpdateChecker.GitHubRelease>))]
+    [JsonSerializable(typeof(AppVeyorProject))]
+    [JsonSerializable(typeof(AppVeyorProjectArtifact[]))]
+    [JsonSerializable(typeof(Dictionary<string, string>))]
+    [JsonSerializable(typeof(List<string>))]
+    [JsonSerializable(typeof(string))]
+    internal sealed partial class HelpersLibJsonContext : JsonSerializerContext
     {
-        public ImageEffectsSerializationBinder()
-        {
-            KnownTypes = Helpers.FindSubclassesOf<ImageEffect>();
-        }
+        // Registered with ShareXJson by the ShareX.Roslyn generated ShareXGeneratedRegistration class.
     }
 }

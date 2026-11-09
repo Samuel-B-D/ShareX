@@ -23,17 +23,19 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using ShareX.HelpersLib.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace ShareX.UploadersLib.FileUploaders
 {
@@ -170,13 +172,13 @@ namespace ShareX.UploadersLib.FileUploaders
                 byte[] encryptedAttributes = EncryptAttributes(fileName, cipher.FileKey);
                 byte[] encryptedFileKey = TransformEcb(fullFileKey, masterKey, encrypt: true);
 
-                JToken createNodeResponse = await SendApiRequestAsync(new JObject
+                JsonNode createNodeResponse = await SendApiRequestAsync(new JsonObject
                 {
                     ["a"] = "p",
                     ["t"] = targetNodeID,
-                    ["n"] = new JArray
+                    ["n"] = new JsonArray
                     {
-                        new JObject
+                        (JsonNode)new JsonObject
                         {
                             ["h"] = completionHandle,
                             ["t"] = 0,
@@ -186,25 +188,25 @@ namespace ShareX.UploadersLib.FileUploaders
                     }
                 }, cancellationToken).ConfigureAwait(false);
 
-                string nodeID = createNodeResponse.SelectToken("f[0].h")?.Value<string>();
+                string nodeID = JsonPath.SelectString(createNodeResponse, "f[0].h");
                 if (string.IsNullOrWhiteSpace(nodeID))
                 {
                     throw new MegaRequestException("MEGA created the file but did not return its node handle.");
                 }
 
-                JToken publicHandleResponse = await SendApiRequestAsync(new JObject
+                JsonNode publicHandleResponse = await SendApiRequestAsync(new JsonObject
                 {
                     ["a"] = "l",
                     ["n"] = nodeID
                 }, cancellationToken).ConfigureAwait(false);
 
-                string publicHandle = publicHandleResponse.Value<string>();
+                string publicHandle = JsonPath.ToText(publicHandleResponse);
                 if (string.IsNullOrWhiteSpace(publicHandle))
                 {
                     throw new MegaRequestException("MEGA did not return a public file handle.");
                 }
 
-                result.Response = createNodeResponse.ToString(Formatting.None);
+                result.Response = createNodeResponse?.ToJsonString(ShareXJson.Default);
                 result.URL = $"{PublicFileURL}{publicHandle}#{ToBase64URL(fullFileKey)}";
                 result.IsSuccess = true;
             }
@@ -233,17 +235,17 @@ namespace ShareX.UploadersLib.FileUploaders
             sessionID = null;
             masterKey = null;
 
-            JToken preLoginResponse = await SendApiRequestAsync(new JObject
+            JsonNode preLoginResponse = await SendApiRequestAsync(new JsonObject
             {
                 ["a"] = "us0",
                 ["user"] = Email
             }, cancellationToken, includeSession: false).ConfigureAwait(false);
 
-            int accountVersion = preLoginResponse.Value<int?>("v") ?? 0;
-            string salt = preLoginResponse.Value<string>("s");
+            int accountVersion = GetInt(preLoginResponse, "v") ?? 0;
+            string salt = GetString(preLoginResponse, "s");
             MegaAuthenticationInfo authentication = CreateAuthenticationInfo(Email, Password, accountVersion, salt);
 
-            JObject request = new JObject
+            JsonObject request = new JsonObject
             {
                 ["a"] = "us",
                 ["user"] = Email,
@@ -255,18 +257,18 @@ namespace ShareX.UploadersLib.FileUploaders
                 request["mfa"] = twoFactorAuthenticationCode.Trim();
             }
 
-            JToken loginResponse = await SendApiRequestAsync(request, cancellationToken, includeSession: false).ConfigureAwait(false);
-            masterKey = TransformEcb(FromBase64URL(loginResponse.Value<string>("k")), authentication.PasswordKey, encrypt: false);
+            JsonNode loginResponse = await SendApiRequestAsync(request, cancellationToken, includeSession: false).ConfigureAwait(false);
+            masterKey = TransformEcb(FromBase64URL(GetString(loginResponse, "k")), authentication.PasswordKey, encrypt: false);
 
-            string encryptedSessionID = loginResponse.Value<string>("csid");
+            string encryptedSessionID = GetString(loginResponse, "csid");
             if (!string.IsNullOrWhiteSpace(encryptedSessionID))
             {
-                byte[] encryptedPrivateKey = FromBase64URL(loginResponse.Value<string>("privk"));
+                byte[] encryptedPrivateKey = FromBase64URL(GetString(loginResponse, "privk"));
                 sessionID = DecryptSessionID(encryptedSessionID, encryptedPrivateKey, masterKey);
             }
             else
             {
-                string temporarySessionID = loginResponse.Value<string>("tsid");
+                string temporarySessionID = GetString(loginResponse, "tsid");
                 if (!ValidateTemporarySessionID(temporarySessionID, masterKey))
                 {
                     throw new MegaRequestException("MEGA returned an invalid login session.");
@@ -280,12 +282,10 @@ namespace ShareX.UploadersLib.FileUploaders
 
         private async Task<string> GetRootNodeIDAsync(CancellationToken cancellationToken)
         {
-            JToken response = await GetNodesAsync(cancellationToken).ConfigureAwait(false);
+            JsonNode response = await GetNodesAsync(cancellationToken).ConfigureAwait(false);
 
-            string rootNodeID = response["f"]?
-                .Children<JToken>()
-                .FirstOrDefault(node => node.Value<int?>("t") == 2)?
-                .Value<string>("h");
+            string rootNodeID = GetString(GetChildren(response, "f")
+                .FirstOrDefault(node => GetInt(node, "t") == 2), "h");
 
             if (string.IsNullOrWhiteSpace(rootNodeID))
             {
@@ -303,12 +303,12 @@ namespace ShareX.UploadersLib.FileUploaders
                 throw new MegaRequestException("MEGA login is required. Log in from Destination settings.");
             }
 
-            JToken response = await GetNodesAsync(cancellationToken).ConfigureAwait(false);
-            IEnumerable<JToken> nodes = response["f"]?.Children<JToken>() ?? [];
+            JsonNode response = await GetNodesAsync(cancellationToken).ConfigureAwait(false);
+            IEnumerable<JsonNode> nodes = GetChildren(response, "f");
             string parentID = parent?.ID;
             if (string.IsNullOrWhiteSpace(parentID))
             {
-                parentID = nodes.FirstOrDefault(node => node.Value<int?>("t") == 2)?.Value<string>("h");
+                parentID = GetString(nodes.FirstOrDefault(node => GetInt(node, "t") == 2), "h");
             }
 
             if (string.IsNullOrWhiteSpace(parentID))
@@ -317,10 +317,10 @@ namespace ShareX.UploadersLib.FileUploaders
             }
 
             return nodes
-                .Where(node => node.Value<int?>("t") == 1 && node.Value<string>("p") == parentID)
+                .Where(node => GetInt(node, "t") == 1 && GetString(node, "p") == parentID)
                 .Select(node => new MegaFolderInfo
                 {
-                    ID = node.Value<string>("h"),
+                    ID = GetString(node, "h"),
                     Name = DecryptNodeName(node)
                 })
                 .Where(folder => !string.IsNullOrWhiteSpace(folder.ID))
@@ -328,19 +328,19 @@ namespace ShareX.UploadersLib.FileUploaders
                 .ToArray();
         }
 
-        private Task<JToken> GetNodesAsync(CancellationToken cancellationToken)
+        private Task<JsonNode> GetNodesAsync(CancellationToken cancellationToken)
         {
-            return SendApiRequestAsync(new JObject
+            return SendApiRequestAsync(new JsonObject
             {
                 ["a"] = "f",
                 ["c"] = 1
             }, cancellationToken);
         }
 
-        private string DecryptNodeName(JToken node)
+        private string DecryptNodeName(JsonNode node)
         {
-            string encryptedAttributes = node.Value<string>("a");
-            string keyData = node.Value<string>("k");
+            string encryptedAttributes = GetString(node, "a");
+            string keyData = GetString(node, "k");
             if (string.IsNullOrWhiteSpace(encryptedAttributes) || string.IsNullOrWhiteSpace(keyData))
             {
                 return null;
@@ -367,7 +367,7 @@ namespace ShareX.UploadersLib.FileUploaders
                     string json = Encoding.UTF8.GetString(decryptedAttributes).TrimEnd('\0');
                     if (!json.StartsWith("MEGA", StringComparison.Ordinal)) continue;
 
-                    return JObject.Parse(json[4..]).Value<string>("n");
+                    return GetString(ShareXJson.Parse(json[4..]), "n");
                 }
                 catch (Exception exception) when (exception is FormatException or CryptographicException or JsonException)
                 {
@@ -379,7 +379,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
         private async Task<string> GetUploadURLAsync(long fileSize, CancellationToken cancellationToken)
         {
-            JToken response = await SendApiRequestAsync(new JObject
+            JsonNode response = await SendApiRequestAsync(new JsonObject
             {
                 ["a"] = "u",
                 ["ssl"] = 2,
@@ -387,7 +387,7 @@ namespace ShareX.UploadersLib.FileUploaders
                 ["s"] = fileSize
             }, cancellationToken).ConfigureAwait(false);
 
-            string uploadURL = response.Value<string>("p");
+            string uploadURL = GetString(response, "p");
             if (string.IsNullOrWhiteSpace(uploadURL))
             {
                 throw new MegaRequestException("MEGA did not return an upload URL.");
@@ -396,7 +396,7 @@ namespace ShareX.UploadersLib.FileUploaders
             return uploadURL.TrimEnd('/');
         }
 
-        private async Task<JToken> SendApiRequestAsync(JObject request, CancellationToken cancellationToken, bool includeSession = true)
+        private async Task<JsonNode> SendApiRequestAsync(JsonObject request, CancellationToken cancellationToken, bool includeSession = true)
         {
             long requestID = Interlocked.Increment(ref sequenceNumber);
             string url = $"{ApiURL}?id={requestID}";
@@ -405,7 +405,7 @@ namespace ShareX.UploadersLib.FileUploaders
                 url += "&sid=" + Uri.EscapeDataString(sessionID);
             }
 
-            byte[] requestBody = Encoding.UTF8.GetBytes(new JArray(request).ToString(Formatting.None));
+            byte[] requestBody = Encoding.UTF8.GetBytes(new JsonArray(request).ToJsonString(ShareXJson.Default));
             string hashcash = null;
 
             for (int attempt = 0; attempt < 2; attempt++)
@@ -452,21 +452,21 @@ namespace ShareX.UploadersLib.FileUploaders
                     throw new MegaRequestException("MEGA returned an empty API response.");
                 }
 
-                JToken parsedResponse;
+                JsonNode parsedResponse;
                 try
                 {
-                    parsedResponse = JToken.Parse(responseInfo.ResponseText);
+                    parsedResponse = ShareXJson.Parse(responseInfo.ResponseText);
                 }
                 catch (JsonException e)
                 {
-                    string command = request.Value<string>("a") ?? "unknown";
+                    string command = GetString(request, "a") ?? "unknown";
                     string responseKind = responseInfo.ResponseText.TrimStart().StartsWith("<", StringComparison.Ordinal) ?
                         "HTML" : $"a {responseInfo.ResponseText.Length}-character payload";
                     throw new MegaRequestException($"MEGA returned {responseKind} instead of JSON for API command '{command}'.", e);
                 }
 
-                JToken responseToken;
-                if (parsedResponse is JArray responseArray)
+                JsonNode responseToken;
+                if (parsedResponse is JsonArray responseArray)
                 {
                     if (responseArray.Count == 0)
                     {
@@ -480,14 +480,14 @@ namespace ShareX.UploadersLib.FileUploaders
                     responseToken = parsedResponse;
                 }
 
-                if (responseToken is JObject responseObject && responseObject.TryGetValue("result", out JToken resultToken))
+                if (responseToken is JsonObject responseObject && responseObject.TryGetPropertyValue("result", out JsonNode resultToken))
                 {
                     responseToken = resultToken;
                 }
 
-                if (responseToken.Type == JTokenType.Integer)
+                if (responseToken is JsonValue responseValue && responseValue.GetValueKind() == JsonValueKind.Number &&
+                    responseValue.TryGetValue(out long errorCode))
                 {
-                    long errorCode = responseToken.Value<long>();
                     if (errorCode < 0)
                     {
                         throw new MegaApiException(errorCode);
@@ -498,6 +498,22 @@ namespace ShareX.UploadersLib.FileUploaders
             }
 
             throw new MegaRequestException("MEGA proof-of-work verification failed.");
+        }
+
+        private static string GetString(JsonNode node, string propertyName)
+        {
+            return node is JsonObject obj ? JsonPath.ToText(obj[propertyName]) : null;
+        }
+
+        private static int? GetInt(JsonNode node, string propertyName)
+        {
+            string value = GetString(node, propertyName);
+            return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int result) ? result : null;
+        }
+
+        private static IEnumerable<JsonNode> GetChildren(JsonNode node, string propertyName)
+        {
+            return (node is JsonObject obj ? obj[propertyName] as JsonArray : null) ?? [];
         }
 
         internal static string GenerateHashcashToken(string challenge, CancellationToken cancellationToken = default)
@@ -718,7 +734,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
         private static byte[] EncryptAttributes(string fileName, byte[] fileKey)
         {
-            string json = JsonConvert.SerializeObject(new { n = fileName }, Formatting.None);
+            string json = new JsonObject { ["n"] = fileName }.ToJsonString(ShareXJson.Default);
             byte[] data = Encoding.UTF8.GetBytes("MEGA" + json);
             Array.Resize(ref data, (data.Length + 15) / 16 * 16);
 

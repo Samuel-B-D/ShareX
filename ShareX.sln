@@ -50,6 +50,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShareX.PhotoEditor", "Share
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShareX.OCR", "ShareX.OCR\ShareX.OCR.csproj", "{E3FA9E78-4715-44EE-8B76-141AAED0D53C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShareX.Roslyn", "ShareX.Roslyn\ShareX.Roslyn.csproj", "{2E5ACE8E-04B7-401F-BB4C-302C8834209B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -750,6 +752,46 @@ Global
 		{E3FA9E78-4715-44EE-8B76-141AAED0D53C}.Steam|Any CPU.Build.0 = Steam|x64
 		{E3FA9E78-4715-44EE-8B76-141AAED0D53C}.Steam|x86.ActiveCfg = Steam|x64
 		{E3FA9E78-4715-44EE-8B76-141AAED0D53C}.Steam|x86.Build.0 = Steam|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Debug|ARM64.Build.0 = Debug|ARM64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Debug|x64.ActiveCfg = Debug|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Debug|x64.Build.0 = Debug|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Debug|Any CPU.Build.0 = Debug|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Debug|x86.ActiveCfg = Debug|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Debug|x86.Build.0 = Debug|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.MicrosoftStore|ARM64.ActiveCfg = MicrosoftStore|ARM64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.MicrosoftStore|ARM64.Build.0 = MicrosoftStore|ARM64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.MicrosoftStore|x64.ActiveCfg = MicrosoftStore|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.MicrosoftStore|x64.Build.0 = MicrosoftStore|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.MicrosoftStore|Any CPU.ActiveCfg = MicrosoftStore|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.MicrosoftStore|Any CPU.Build.0 = MicrosoftStore|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.MicrosoftStore|x86.ActiveCfg = MicrosoftStore|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.MicrosoftStore|x86.Build.0 = MicrosoftStore|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.MicrosoftStoreDebug|ARM64.ActiveCfg = MicrosoftStoreDebug|ARM64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.MicrosoftStoreDebug|ARM64.Build.0 = MicrosoftStoreDebug|ARM64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.MicrosoftStoreDebug|x64.ActiveCfg = MicrosoftStoreDebug|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.MicrosoftStoreDebug|x64.Build.0 = MicrosoftStoreDebug|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.MicrosoftStoreDebug|Any CPU.ActiveCfg = MicrosoftStoreDebug|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.MicrosoftStoreDebug|Any CPU.Build.0 = MicrosoftStoreDebug|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.MicrosoftStoreDebug|x86.ActiveCfg = MicrosoftStoreDebug|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.MicrosoftStoreDebug|x86.Build.0 = MicrosoftStoreDebug|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Release|ARM64.ActiveCfg = Release|ARM64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Release|ARM64.Build.0 = Release|ARM64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Release|x64.ActiveCfg = Release|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Release|x64.Build.0 = Release|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Release|Any CPU.ActiveCfg = Release|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Release|Any CPU.Build.0 = Release|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Release|x86.ActiveCfg = Release|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Release|x86.Build.0 = Release|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Steam|ARM64.ActiveCfg = Steam|ARM64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Steam|ARM64.Build.0 = Steam|ARM64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Steam|x64.ActiveCfg = Steam|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Steam|x64.Build.0 = Steam|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Steam|Any CPU.ActiveCfg = Steam|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Steam|Any CPU.Build.0 = Steam|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Steam|x86.ActiveCfg = Steam|x64
+		{2E5ACE8E-04B7-401F-BB4C-302C8834209B}.Steam|x86.Build.0 = Steam|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

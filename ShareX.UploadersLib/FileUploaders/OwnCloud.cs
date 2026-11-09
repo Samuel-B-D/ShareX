@@ -23,13 +23,13 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
+using System.Text.Json;
 
 namespace ShareX.UploadersLib.FileUploaders
 {
@@ -170,13 +170,13 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (!string.IsNullOrEmpty(response))
             {
-                OwnCloudShareResponse result = JsonConvert.DeserializeObject<OwnCloudShareResponse>(response);
+                OwnCloudShareResponse result = ShareXJson.Deserialize<OwnCloudShareResponse>(response);
 
                 if (result != null && result.ocs != null && result.ocs.meta != null)
                 {
                     if (result.ocs.data != null && result.ocs.meta.statuscode == 100)
                     {
-                        OwnCloudShareResponseData data = ((JObject)result.ocs.data).ToObject<OwnCloudShareResponseData>();
+                        OwnCloudShareResponseData data = ShareXJson.Deserialize<OwnCloudShareResponseData>((JsonElement)result.ocs.data);
                         string link = data.url;
 
                         if (PreviewLink && FileHelpers.IsImageFile(path))

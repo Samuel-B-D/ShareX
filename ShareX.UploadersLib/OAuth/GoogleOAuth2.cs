@@ -25,8 +25,8 @@
 
 #nullable enable
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 
@@ -76,7 +76,7 @@ namespace ShareX.UploadersLib
 
             if (!string.IsNullOrEmpty(response))
             {
-                OAuth2Token? token = JsonConvert.DeserializeObject<OAuth2Token>(response);
+                OAuth2Token? token = ShareXJson.Deserialize<OAuth2Token>(response);
 
                 if (token != null && !string.IsNullOrEmpty(token.access_token))
                 {
@@ -104,7 +104,7 @@ namespace ShareX.UploadersLib
 
                 if (!string.IsNullOrEmpty(response))
                 {
-                    OAuth2Token? token = JsonConvert.DeserializeObject<OAuth2Token>(response);
+                    OAuth2Token? token = ShareXJson.Deserialize<OAuth2Token>(response);
 
                     if (token != null && !string.IsNullOrEmpty(token.access_token))
                     {
@@ -153,7 +153,7 @@ namespace ShareX.UploadersLib
 
             if (!string.IsNullOrEmpty(response))
             {
-                return JsonConvert.DeserializeObject<OAuthUserInfo>(response);
+                return ShareXJson.Deserialize<OAuthUserInfo>(response);
             }
 
             return null;

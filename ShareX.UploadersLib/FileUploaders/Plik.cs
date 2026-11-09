@@ -23,13 +23,14 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
+using System.Text.Json.Serialization;
 
 namespace ShareX.UploadersLib.FileUploaders
 {
@@ -90,9 +91,9 @@ namespace ShareX.UploadersLib.FileUploaders
                 metaDataReq.Login = Settings.Login;
                 metaDataReq.Password = Settings.Password;
             }
-            string metaDataResp = await SendRequestAsync(HttpMethod.POST, Settings.URL + "/upload", JsonConvert.SerializeObject(metaDataReq), headers: requestHeaders,
+            string metaDataResp = await SendRequestAsync(HttpMethod.POST, Settings.URL + "/upload", ShareXJson.Serialize(metaDataReq), headers: requestHeaders,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
-            UploadMetadataResponse metaData = JsonConvert.DeserializeObject<UploadMetadataResponse>(metaDataResp);
+            UploadMetadataResponse metaData = ShareXJson.Deserialize<UploadMetadataResponse>(metaDataResp);
             requestHeaders["x-uploadtoken"] = metaData.uploadToken;
             string url = $"{Settings.URL}/file/{metaData.id}/{metaData.files.First().Value.id}/{fileName}";
             UploadResult FileDatReq = await SendRequestFileAsync(url, stream, fileName, "file", headers: requestHeaders,
@@ -104,7 +105,7 @@ namespace ShareX.UploadersLib.FileUploaders
         private UploadResult ConvertResult(UploadMetadataResponse metaData, UploadResult fileDataReq)
         {
             UploadResult result = new UploadResult(fileDataReq.Response);
-            //UploadMetadataResponse fileData = JsonConvert.DeserializeObject<UploadMetadataResponse>(fileDataReq.Response);
+            //UploadMetadataResponse fileData = ShareXJson.Deserialize<UploadMetadataResponse>(fileDataReq.Response);
             UploadMetadataResponseFile actFile = metaData.files.First().Value;
             result.URL = $"{Settings.URL}/file/{metaData.id}/{actFile.id}/{URLHelpers.URLEncode(actFile.fileName)}";
             return result;
@@ -155,35 +156,35 @@ namespace ShareX.UploadersLib.FileUploaders
 
     public class UploadMetadataRequestFile
     {
-        [JsonProperty("fileName")]
+        [JsonPropertyName("fileName")]
         public string FileName { get; set; }
-        [JsonProperty("fileType")]
+        [JsonPropertyName("fileType")]
         public string FileType { get; set; }
-        [JsonProperty("fileSize")]
+        [JsonPropertyName("fileSize")]
         public int FileSize { get; set; }
     }
 
     public class UploadMetadataRequestFile0
     {
-        [JsonProperty("0")]
+        [JsonPropertyName("0")]
         public UploadMetadataRequestFile File0 { get; set; }
     }
 
     public class UploadMetadataRequest
     {
-        [JsonProperty("ttl")]
+        [JsonPropertyName("ttl")]
         public int Ttl { get; set; }
-        [JsonProperty("removable")]
+        [JsonPropertyName("removable")]
         public bool Removable { get; set; }
-        [JsonProperty("oneShot")]
+        [JsonPropertyName("oneShot")]
         public bool OneShot { get; set; }
-        [JsonProperty("comments")]
+        [JsonPropertyName("comments")]
         public string Comment { get; set; }
-        [JsonProperty("login")]
+        [JsonPropertyName("login")]
         public string Login { get; set; }
-        [JsonProperty("password")]
+        [JsonPropertyName("password")]
         public string Password { get; set; }
-        [JsonProperty("files")]
+        [JsonPropertyName("files")]
         public UploadMetadataRequestFile0 Files { get; set; }
     }
 

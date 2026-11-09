@@ -23,8 +23,8 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.IO;
 
 namespace ShareX.UploadersLib.FileUploaders
@@ -118,13 +118,13 @@ namespace ShareX.UploadersLib.FileUploaders
                 };
             }
 
-            string serializedGoogleCloudStorageMetadata = JsonConvert.SerializeObject(googleCloudStorageMetadata);
+            string serializedGoogleCloudStorageMetadata = ShareXJson.Serialize(googleCloudStorageMetadata);
 
             UploadResult result = await SendRequestFileAsync($"https://www.googleapis.com/upload/storage/v1/b/{Bucket}/o?uploadType=multipart&fields=name", stream,
                 fileName, null, headers: OAuth2.GetAuthHeaders(), contentType: "multipart/related", relatedData: serializedGoogleCloudStorageMetadata,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            GoogleCloudStorageResponse googleCloudStorageResponse = JsonConvert.DeserializeObject<GoogleCloudStorageResponse>(result.Response);
+            GoogleCloudStorageResponse googleCloudStorageResponse = ShareXJson.Deserialize<GoogleCloudStorageResponse>(result.Response);
 
             result.URL = GenerateURL(googleCloudStorageResponse.name);
 
@@ -170,18 +170,18 @@ namespace ShareX.UploadersLib.FileUploaders
             return GenerateURL(uploadPath);
         }
 
-        private class GoogleCloudStorageResponse
+        internal class GoogleCloudStorageResponse
         {
             public string name { get; set; }
         }
 
-        private class GoogleCloudStorageMetadata
+        internal class GoogleCloudStorageMetadata
         {
             public string name { get; set; }
             public GoogleCloudStorageAcl[] acl { get; set; }
         }
 
-        private class GoogleCloudStorageAcl
+        internal class GoogleCloudStorageAcl
         {
             public string entity { get; set; }
             public string role { get; set; }

@@ -23,12 +23,14 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace ShareX.UploadersLib.FileUploaders
 {
@@ -116,7 +118,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (!string.IsNullOrEmpty(response))
             {
-                OAuth2Token token = JsonConvert.DeserializeObject<OAuth2Token>(response);
+                OAuth2Token token = ShareXJson.Deserialize<OAuth2Token>(response);
 
                 if (token != null && !string.IsNullOrEmpty(token.access_token))
                 {
@@ -167,7 +169,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
                 if (!string.IsNullOrEmpty(response))
                 {
-                    return JsonConvert.DeserializeObject<DropboxAccount>(response);
+                    return ShareXJson.Deserialize<DropboxAccount>(response);
                 }
             }
 
@@ -178,10 +180,10 @@ namespace ShareX.UploadersLib.FileUploaders
         {
             if (!string.IsNullOrEmpty(path) && OAuth2Info.CheckOAuth(AuthInfo))
             {
-                string json = JsonConvert.SerializeObject(new
+                string json = new JsonObject
                 {
-                    path = VerifyPath(path)
-                });
+                    ["path"] = VerifyPath(path)
+                }.ToJsonString(ShareXJson.Default);
 
                 Dictionary<string, string> args = new Dictionary<string, string>();
                 args.Add("arg", json);
@@ -202,13 +204,13 @@ namespace ShareX.UploadersLib.FileUploaders
                 return null;
             }
 
-            string json = JsonConvert.SerializeObject(new
+            string json = new JsonObject
             {
-                path = VerifyPath(path, fileName),
-                mode = "overwrite",
-                autorename = false,
-                mute = true
-            });
+                ["path"] = VerifyPath(path, fileName),
+                ["mode"] = "overwrite",
+                ["autorename"] = false,
+                ["mute"] = true
+            }.ToJsonString(ShareXJson.Default);
 
             Dictionary<string, string> args = new Dictionary<string, string>();
             args.Add("arg", json);
@@ -220,7 +222,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (!string.IsNullOrEmpty(ur.Response))
             {
-                DropboxMetadata metadata = JsonConvert.DeserializeObject<DropboxMetadata>(ur.Response);
+                DropboxMetadata metadata = ShareXJson.Deserialize<DropboxMetadata>(ur.Response);
 
                 if (metadata != null)
                 {
@@ -246,20 +248,20 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (path != null && OAuth2Info.CheckOAuth(AuthInfo))
             {
-                string json = JsonConvert.SerializeObject(new
+                string json = new JsonObject
                 {
-                    path = VerifyPath(path),
-                    include_media_info = false,
-                    include_deleted = false,
-                    include_has_explicit_shared_members = false
-                });
+                    ["path"] = VerifyPath(path),
+                    ["include_media_info"] = false,
+                    ["include_deleted"] = false,
+                    ["include_has_explicit_shared_members"] = false
+                }.ToJsonString(ShareXJson.Default);
 
                 string response = await SendRequestAsync(HttpMethod.POST, URLGetMetadata, json, RequestHelpers.ContentTypeJSON, null, GetAuthHeaders(),
                     cancellationToken: cancellationToken).ConfigureAwait(false);
 
                 if (!string.IsNullOrEmpty(response))
                 {
-                    metadata = JsonConvert.DeserializeObject<DropboxMetadata>(response);
+                    metadata = ShareXJson.Deserialize<DropboxMetadata>(response);
                 }
             }
 
@@ -277,14 +279,14 @@ namespace ShareX.UploadersLib.FileUploaders
         {
             if (!string.IsNullOrEmpty(path) && OAuth2Info.CheckOAuth(AuthInfo))
             {
-                string json = JsonConvert.SerializeObject(new
+                string json = new JsonObject
                 {
-                    path = VerifyPath(path),
-                    settings = new
+                    ["path"] = VerifyPath(path),
+                    ["settings"] = new JsonObject
                     {
-                        requested_visibility = "public" // Anyone who has received the link can access it. No login required.
+                        ["requested_visibility"] = "public" // Anyone who has received the link can access it. No login required.
                     }
-                });
+                }.ToJsonString(ShareXJson.Default);
 
                 string response = await SendRequestAsync(HttpMethod.POST, URLCreateSharedLink, json, RequestHelpers.ContentTypeJSON, null, GetAuthHeaders(),
                     cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -293,7 +295,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
                 if (!string.IsNullOrEmpty(response))
                 {
-                    linkMetadata = JsonConvert.DeserializeObject<DropboxLinkMetadata>(response);
+                    linkMetadata = ShareXJson.Deserialize<DropboxLinkMetadata>(response);
                 }
                 else if (IsError && Errors.Errors[Errors.Count - 1].Text.Contains("\"shared_link_already_exists\"")) // Ugly workaround
                 {
@@ -328,18 +330,18 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (path != null && OAuth2Info.CheckOAuth(AuthInfo))
             {
-                string json = JsonConvert.SerializeObject(new
+                string json = new JsonObject
                 {
-                    path = VerifyPath(path),
-                    direct_only = directOnly
-                });
+                    ["path"] = VerifyPath(path),
+                    ["direct_only"] = directOnly
+                }.ToJsonString(ShareXJson.Default);
 
                 string response = await SendRequestAsync(HttpMethod.POST, URLListSharedLinks, json, RequestHelpers.ContentTypeJSON, null, GetAuthHeaders(),
                     cancellationToken: cancellationToken).ConfigureAwait(false);
 
                 if (!string.IsNullOrEmpty(response))
                 {
-                    result = JsonConvert.DeserializeObject<DropboxListSharedLinksResult>(response);
+                    result = ShareXJson.Deserialize<DropboxListSharedLinksResult>(response);
                 }
             }
 
@@ -352,18 +354,18 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (!string.IsNullOrEmpty(fromPath) && !string.IsNullOrEmpty(toPath) && OAuth2Info.CheckOAuth(AuthInfo))
             {
-                string json = JsonConvert.SerializeObject(new
+                string json = new JsonObject
                 {
-                    from_path = VerifyPath(fromPath),
-                    to_path = VerifyPath(toPath)
-                });
+                    ["from_path"] = VerifyPath(fromPath),
+                    ["to_path"] = VerifyPath(toPath)
+                }.ToJsonString(ShareXJson.Default);
 
                 string response = await SendRequestAsync(HttpMethod.POST, URLCopy, json, RequestHelpers.ContentTypeJSON, null, GetAuthHeaders(),
                     cancellationToken: cancellationToken).ConfigureAwait(false);
 
                 if (!string.IsNullOrEmpty(response))
                 {
-                    metadata = JsonConvert.DeserializeObject<DropboxMetadata>(response);
+                    metadata = ShareXJson.Deserialize<DropboxMetadata>(response);
                 }
             }
 
@@ -376,17 +378,17 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (!string.IsNullOrEmpty(path) && OAuth2Info.CheckOAuth(AuthInfo))
             {
-                string json = JsonConvert.SerializeObject(new
+                string json = new JsonObject
                 {
-                    path = VerifyPath(path)
-                });
+                    ["path"] = VerifyPath(path)
+                }.ToJsonString(ShareXJson.Default);
 
                 string response = await SendRequestAsync(HttpMethod.POST, URLCreateFolder, json, RequestHelpers.ContentTypeJSON, null, GetAuthHeaders(),
                     cancellationToken: cancellationToken).ConfigureAwait(false);
 
                 if (!string.IsNullOrEmpty(response))
                 {
-                    metadata = JsonConvert.DeserializeObject<DropboxMetadata>(response);
+                    metadata = ShareXJson.Deserialize<DropboxMetadata>(response);
                 }
             }
 
@@ -399,17 +401,17 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (!string.IsNullOrEmpty(path) && OAuth2Info.CheckOAuth(AuthInfo))
             {
-                string json = JsonConvert.SerializeObject(new
+                string json = new JsonObject
                 {
-                    path = VerifyPath(path)
-                });
+                    ["path"] = VerifyPath(path)
+                }.ToJsonString(ShareXJson.Default);
 
                 string response = await SendRequestAsync(HttpMethod.POST, URLDelete, json, RequestHelpers.ContentTypeJSON, null, GetAuthHeaders(),
                     cancellationToken: cancellationToken).ConfigureAwait(false);
 
                 if (!string.IsNullOrEmpty(response))
                 {
-                    metadata = JsonConvert.DeserializeObject<DropboxMetadata>(response);
+                    metadata = ShareXJson.Deserialize<DropboxMetadata>(response);
                 }
             }
 
@@ -422,18 +424,18 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (!string.IsNullOrEmpty(fromPath) && !string.IsNullOrEmpty(toPath) && OAuth2Info.CheckOAuth(AuthInfo))
             {
-                string json = JsonConvert.SerializeObject(new
+                string json = new JsonObject
                 {
-                    from_path = VerifyPath(fromPath),
-                    to_path = VerifyPath(toPath)
-                });
+                    ["from_path"] = VerifyPath(fromPath),
+                    ["to_path"] = VerifyPath(toPath)
+                }.ToJsonString(ShareXJson.Default);
 
                 string response = await SendRequestAsync(HttpMethod.POST, URLMove, json, RequestHelpers.ContentTypeJSON, null, GetAuthHeaders(),
                     cancellationToken: cancellationToken).ConfigureAwait(false);
 
                 if (!string.IsNullOrEmpty(response))
                 {
-                    metadata = JsonConvert.DeserializeObject<DropboxMetadata>(response);
+                    metadata = ShareXJson.Deserialize<DropboxMetadata>(response);
                 }
             }
 
@@ -484,13 +486,13 @@ namespace ShareX.UploadersLib.FileUploaders
 
     public class DropboxAccountType
     {
-        [JsonProperty(".tag")]
+        [JsonPropertyName(".tag")]
         public string tag { get; set; }
     }
 
     public class DropboxMetadata
     {
-        [JsonProperty(".tag")]
+        [JsonPropertyName(".tag")]
         public string tag { get; set; }
         public string name { get; set; }
         public string id { get; set; }
@@ -526,7 +528,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
     public class DropboxLinkMetadata
     {
-        [JsonProperty(".tag")]
+        [JsonPropertyName(".tag")]
         public string tag { get; set; }
         public string url { get; set; }
         public string name { get; set; }
@@ -549,13 +551,13 @@ namespace ShareX.UploadersLib.FileUploaders
 
     public class DropboxLinkMetadataResolvedVisibility
     {
-        [JsonProperty(".tag")]
+        [JsonPropertyName(".tag")]
         public string tag { get; set; }
     }
 
     public class DropboxLinkMetadataRevokeFailureReason
     {
-        [JsonProperty(".tag")]
+        [JsonPropertyName(".tag")]
         public string tag { get; set; }
     }
 

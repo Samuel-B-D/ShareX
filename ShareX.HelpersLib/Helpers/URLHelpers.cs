@@ -23,7 +23,6 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -207,7 +206,7 @@ namespace ShareX.HelpersLib
 
         public static string JSONEncode(string text)
         {
-            text = JsonConvert.ToString(text);
+            text = Json.ShareXJson.ToJsonString(text);
             return text.Substring(1, text.Length - 2);
         }
 

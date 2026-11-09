@@ -23,12 +23,13 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
+using System.Text.Json.Nodes;
 
 namespace ShareX.UploadersLib.FileUploaders
 {
@@ -89,7 +90,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (result.IsSuccess)
             {
-                ImmichUploadResponse response = JsonConvert.DeserializeObject<ImmichUploadResponse>(result.Response);
+                ImmichUploadResponse response = ShareXJson.Deserialize<ImmichUploadResponse>(result.Response);
                 if (!string.IsNullOrWhiteSpace(response?.Id))
                 {
                     if (AutoCreateShareableLink)
@@ -113,17 +114,17 @@ namespace ShareX.UploadersLib.FileUploaders
 
         private async Task<string> CreateShareableLinkAsync(string assetId, NameValueCollection headers, CancellationToken cancellationToken)
         {
-            string requestBody = JsonConvert.SerializeObject(new
+            string requestBody = new JsonObject
             {
-                type = "INDIVIDUAL",
-                assetIds = new[] { assetId },
-                allowUpload = false,
-                allowDownload = true,
-                showMetadata = ShowMetadata
-            });
+                ["type"] = "INDIVIDUAL",
+                ["assetIds"] = new JsonArray { (JsonNode)assetId },
+                ["allowUpload"] = false,
+                ["allowDownload"] = true,
+                ["showMetadata"] = ShowMetadata
+            }.ToJsonString(ShareXJson.Default);
             string responseText = await SendRequestAsync(HttpMethod.POST, GetSharedLinksURL(URL), requestBody,
                 RequestHelpers.ContentTypeJSON, headers: headers, cancellationToken: cancellationToken).ConfigureAwait(false);
-            ImmichSharedLinkResponse response = JsonConvert.DeserializeObject<ImmichSharedLinkResponse>(responseText);
+            ImmichSharedLinkResponse response = ShareXJson.Deserialize<ImmichSharedLinkResponse>(responseText);
 
             return string.IsNullOrWhiteSpace(response?.Key)
                 ? null

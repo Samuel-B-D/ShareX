@@ -23,9 +23,10 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Specialized;
+using System.Text.Json.Nodes;
 
 namespace ShareX.UploadersLib.URLShorteners
 {
@@ -66,10 +67,10 @@ namespace ShareX.UploadersLib.URLShorteners
         {
             UploadResult result = new UploadResult { URL = url };
 
-            string json = JsonConvert.SerializeObject(new
+            string json = new JsonObject
             {
-                url = url
-            });
+                ["url"] = url
+            }.ToJsonString(ShareXJson.Default);
 
             if (string.IsNullOrEmpty(RequestURL))
             {
@@ -83,7 +84,7 @@ namespace ShareX.UploadersLib.URLShorteners
 
             if (!string.IsNullOrEmpty(response))
             {
-                ZeroWidthURLShortenerResponse jsonResponse = JsonConvert.DeserializeObject<ZeroWidthURLShortenerResponse>(response);
+                ZeroWidthURLShortenerResponse jsonResponse = ShareXJson.Deserialize<ZeroWidthURLShortenerResponse>(response);
 
                 if (jsonResponse != null)
                 {

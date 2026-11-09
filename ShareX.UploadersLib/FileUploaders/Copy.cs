@@ -23,8 +23,8 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
@@ -96,7 +96,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
                 if (!string.IsNullOrEmpty(response))
                 {
-                    account = JsonConvert.DeserializeObject<CopyAccountInfo>(response);
+                    account = ShareXJson.Deserialize<CopyAccountInfo>(response);
 
                     if (account != null)
                     {
@@ -151,7 +151,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (result.IsSuccess)
             {
-                CopyUploadInfo content = JsonConvert.DeserializeObject<CopyUploadInfo>(result.Response);
+                CopyUploadInfo content = ShareXJson.Deserialize<CopyUploadInfo>(result.Response);
 
                 if (content != null && content.objects != null && content.objects.Length > 0)
                 {
@@ -180,7 +180,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
                 if (!string.IsNullOrEmpty(response))
                 {
-                    contentInfo = JsonConvert.DeserializeObject<CopyContentInfo>(response);
+                    contentInfo = ShareXJson.Deserialize<CopyContentInfo>(response);
                 }
             }
 
@@ -224,14 +224,14 @@ namespace ShareX.UploadersLib.FileUploaders
             publicLink.name = "ShareX";
             publicLink.paths = new string[] { path };
 
-            string content = JsonConvert.SerializeObject(publicLink);
+            string content = ShareXJson.Serialize(publicLink);
 
             string response = await SendRequestAsync(HttpMethod.POST, query, content, headers: APIHeaders,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
             if (!string.IsNullOrEmpty(response))
             {
-                CopyLinksInfo link = JsonConvert.DeserializeObject<CopyLinksInfo>(response);
+                CopyLinksInfo link = ShareXJson.Deserialize<CopyLinksInfo>(response);
 
                 return GetLinkURL(link, path, urlType);
             }

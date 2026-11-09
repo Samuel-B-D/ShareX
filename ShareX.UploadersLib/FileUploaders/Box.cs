@@ -23,8 +23,8 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
@@ -95,7 +95,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (!string.IsNullOrEmpty(response))
             {
-                OAuth2Token token = JsonConvert.DeserializeObject<OAuth2Token>(response);
+                OAuth2Token token = ShareXJson.Deserialize<OAuth2Token>(response);
 
                 if (token != null && !string.IsNullOrEmpty(token.access_token))
                 {
@@ -123,7 +123,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
                 if (!string.IsNullOrEmpty(response))
                 {
-                    OAuth2Token token = JsonConvert.DeserializeObject<OAuth2Token>(response);
+                    OAuth2Token token = ShareXJson.Deserialize<OAuth2Token>(response);
 
                     if (token != null && !string.IsNullOrEmpty(token.access_token))
                     {
@@ -182,7 +182,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (!string.IsNullOrEmpty(response))
             {
-                return JsonConvert.DeserializeObject<BoxFileInfo>(response);
+                return ShareXJson.Deserialize<BoxFileInfo>(response);
             }
 
             return null;
@@ -197,7 +197,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (!string.IsNullOrEmpty(response))
             {
-                BoxFileEntry fileEntry = JsonConvert.DeserializeObject<BoxFileEntry>(response);
+                BoxFileEntry fileEntry = ShareXJson.Deserialize<BoxFileEntry>(response);
 
                 if (fileEntry != null && fileEntry.shared_link != null)
                 {
@@ -228,7 +228,7 @@ namespace ShareX.UploadersLib.FileUploaders
 
             if (result.IsSuccess)
             {
-                BoxFileInfo fileInfo = JsonConvert.DeserializeObject<BoxFileInfo>(result.Response);
+                BoxFileInfo fileInfo = ShareXJson.Deserialize<BoxFileInfo>(result.Response);
 
                 if (fileInfo != null && fileInfo.entries != null && fileInfo.entries.Length > 0)
                 {

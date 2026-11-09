@@ -23,8 +23,8 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System.Collections.Generic;
 using System.IO;
 
@@ -77,7 +77,7 @@ namespace ShareX.UploadersLib.FileUploaders
                 return result;
             }
 
-            LambdaResponse response = JsonConvert.DeserializeObject<LambdaResponse>(result.Response);
+            LambdaResponse response = ShareXJson.Deserialize<LambdaResponse>(result.Response);
             if (result.IsSuccess)
             {
                 result.URL = Config.UploadURL + response.url;

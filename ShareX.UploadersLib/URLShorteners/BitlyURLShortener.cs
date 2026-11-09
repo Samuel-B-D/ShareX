@@ -23,8 +23,8 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -119,14 +119,14 @@ namespace ShareX.UploadersLib.URLShorteners
                 BitlyShortenRequestBody requestBody = new BitlyShortenRequestBody();
                 requestBody.long_url = url;
                 if (!string.IsNullOrEmpty(Domain)) requestBody.domain = Domain;
-                string json = JsonConvert.SerializeObject(requestBody);
+                string json = ShareXJson.Serialize(requestBody);
 
                 NameValueCollection headers = GetAuthHeaders();
 
                 result.Response = await SendRequestAsync(HttpMethod.POST, URLShorten, json, RequestHelpers.ContentTypeJSON, null, headers,
                     cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                BitlyShortenResponse responseData = JsonConvert.DeserializeObject<BitlyShortenResponse>(result.Response);
+                BitlyShortenResponse responseData = ShareXJson.Deserialize<BitlyShortenResponse>(result.Response);
 
                 if (responseData != null && !string.IsNullOrEmpty(responseData.link))
                 {
@@ -137,13 +137,13 @@ namespace ShareX.UploadersLib.URLShorteners
             return result;
         }
 
-        private class BitlyShortenRequestBody
+        internal class BitlyShortenRequestBody
         {
             public string long_url { get; set; }
             public string domain { get; set; } = "bit.ly";
         }
 
-        private class BitlyShortenResponse
+        internal class BitlyShortenResponse
         {
             public DateTime created_at { get; set; }
             public string id { get; set; }

@@ -23,18 +23,20 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace ShareX.UploadersLib
 {
-    public class CustomUploaderItem
+    public class CustomUploaderItem : IJsonShouldSerialize
     {
         [DefaultValue("")]
         public string Version { get; set; }
@@ -47,7 +49,7 @@ namespace ShareX.UploadersLib
         [DefaultValue(CustomUploaderDestinationType.None)]
         public CustomUploaderDestinationType DestinationType { get; set; }
 
-        [DefaultValue(HttpMethod.POST), JsonProperty(DefaultValueHandling = DefaultValueHandling.Include)]
+        [DefaultValue(HttpMethod.POST), JsonAlwaysWrite]
         public HttpMethod RequestMethod { get; set; } = HttpMethod.POST;
 
         [DefaultValue("")]
@@ -94,8 +96,23 @@ namespace ShareX.UploadersLib
         [DefaultValue("")]
         public string ErrorMessage { get; set; }
 
-        private CustomUploaderItem()
+        [JsonConstructor]
+        internal CustomUploaderItem()
         {
+        }
+
+        bool IJsonShouldSerialize.ShouldSerialize(string memberName)
+        {
+            switch (memberName)
+            {
+                case nameof(Name): return ShouldSerializeName();
+                case nameof(Parameters): return ShouldSerializeParameters();
+                case nameof(Headers): return ShouldSerializeHeaders();
+                case nameof(Arguments): return ShouldSerializeArguments();
+                case nameof(FileFormName): return ShouldSerializeFileFormName();
+                case nameof(Data): return ShouldSerializeData();
+                default: return true;
+            }
         }
 
         public static CustomUploaderItem Init()
@@ -338,7 +355,7 @@ namespace ShareX.UploadersLib
             {
                 ParseResponse(result, responseInfo, errors, input, isShortenedURL);
             }
-            catch (JsonReaderException e)
+            catch (JsonException e)
             {
                 string hostName = URLHelpers.GetHostName(RequestURL);
                 errors.AddFirst(string.Format(Localization.Strings.CustomUploaderItem_Invalid_JSON_response, hostName) +

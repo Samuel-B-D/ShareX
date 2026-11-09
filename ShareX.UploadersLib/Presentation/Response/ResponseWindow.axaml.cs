@@ -29,7 +29,6 @@ using Avalonia.Controls;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
-using Newtonsoft.Json;
 using ShareX.AvaloniaUI.Integration;
 using ShareX.AvaloniaUI.Theming;
 using ShareX.HelpersLib;
@@ -242,7 +241,7 @@ public partial class ResponseWindow : Window
     private void OnJsonFormatClick(object? sender, RoutedEventArgs e)
     {
         FormatResponse(
-            response => Helpers.JSONFormat(response, Formatting.Indented),
+            response => Helpers.JSONFormat(response, true),
             Localization.Strings.ResponseWindow_JSON_formatting_failed);
     }
 

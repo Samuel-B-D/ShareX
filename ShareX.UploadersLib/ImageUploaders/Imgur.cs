@@ -23,13 +23,13 @@
 
 #endregion License Information (GPL v3)
 
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using ShareX.HelpersLib;
+using ShareX.HelpersLib.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
+using System.Text.Json;
 
 namespace ShareX.UploadersLib.ImageUploaders
 {
@@ -113,7 +113,7 @@ namespace ShareX.UploadersLib.ImageUploaders
 
             if (!string.IsNullOrEmpty(response))
             {
-                OAuth2Token token = JsonConvert.DeserializeObject<OAuth2Token>(response);
+                OAuth2Token token = ShareXJson.Deserialize<OAuth2Token>(response);
 
                 if (token != null && !string.IsNullOrEmpty(token.access_token))
                 {
@@ -141,7 +141,7 @@ namespace ShareX.UploadersLib.ImageUploaders
 
                 if (!string.IsNullOrEmpty(response))
                 {
-                    OAuth2Token token = JsonConvert.DeserializeObject<OAuth2Token>(response);
+                    OAuth2Token token = ShareXJson.Deserialize<OAuth2Token>(response);
 
                     if (token != null && !string.IsNullOrEmpty(token.access_token))
                     {
@@ -219,13 +219,13 @@ namespace ShareX.UploadersLib.ImageUploaders
                 string response = await SendRequestAsync(HttpMethod.GET, "https://api.imgur.com/3/account/me/albums", args, GetAuthHeaders(),
                     cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                ImgurResponse imgurResponse = JsonConvert.DeserializeObject<ImgurResponse>(response);
+                ImgurResponse imgurResponse = ShareXJson.Deserialize<ImgurResponse>(response);
 
                 if (imgurResponse != null)
                 {
                     if (imgurResponse.success && imgurResponse.status == 200)
                     {
-                        return ((JArray)imgurResponse.data).ToObject<List<ImgurAlbumData>>();
+                        return ShareXJson.Deserialize<List<ImgurAlbumData>>((JsonElement)imgurResponse.data);
                     }
                     else
                     {
@@ -244,13 +244,13 @@ namespace ShareX.UploadersLib.ImageUploaders
                 string response = await SendRequestAsync(HttpMethod.GET, $"https://api.imgur.com/3/album/{albumID}/images", headers: GetAuthHeaders(),
                     cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                ImgurResponse imgurResponse = JsonConvert.DeserializeObject<ImgurResponse>(response);
+                ImgurResponse imgurResponse = ShareXJson.Deserialize<ImgurResponse>(response);
 
                 if (imgurResponse != null)
                 {
                     if (imgurResponse.success && imgurResponse.status == 200)
                     {
-                        return ((JArray)imgurResponse.data).ToObject<List<ImgurImageData>>();
+                        return ShareXJson.Deserialize<List<ImgurImageData>>((JsonElement)imgurResponse.data);
                     }
                     else
                     {
@@ -311,13 +311,13 @@ namespace ShareX.UploadersLib.ImageUploaders
 
             if (!string.IsNullOrEmpty(result.Response))
             {
-                ImgurResponse imgurResponse = JsonConvert.DeserializeObject<ImgurResponse>(result.Response);
+                ImgurResponse imgurResponse = ShareXJson.Deserialize<ImgurResponse>(result.Response);
 
                 if (imgurResponse != null)
                 {
                     if (imgurResponse.success && imgurResponse.status == 200)
                     {
-                        ImgurImageData imageData = ((JObject)imgurResponse.data).ToObject<ImgurImageData>();
+                        ImgurImageData imageData = ShareXJson.Deserialize<ImgurImageData>((JsonElement)imgurResponse.data);
 
                         if (imageData != null && !string.IsNullOrEmpty(imageData.link))
                         {
@@ -404,11 +404,11 @@ namespace ShareX.UploadersLib.ImageUploaders
 
         private ImgurErrorData ParseError(ImgurResponse response)
         {
-            ImgurErrorData errorData = ((JObject)response.data).ToObject<ImgurErrorData>();
+            ImgurErrorData errorData = response.data is JsonElement data ? ShareXJson.Deserialize<ImgurErrorData>(data) : null;
 
-            if (errorData != null && !(errorData.error is string))
+            if (errorData != null && errorData.error is JsonElement error)
             {
-                errorData.error = ((JObject)errorData.error).ToObject<ImgurError>().message;
+                errorData.error = error.ValueKind == JsonValueKind.String ? error.GetString() : ShareXJson.Deserialize<ImgurError>(error)?.message;
             }
 
             return errorData;
