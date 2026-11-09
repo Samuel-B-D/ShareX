@@ -30,7 +30,7 @@ namespace ShareX.HelpersLib
 {
     public class GradientStop
     {
-        [DefaultValue(typeof(Color), "Black")]
+        [DefaultColor("Black")]
         public Color Color { get; set; } = Color.Black;
 
         private float location;

@@ -33,13 +33,13 @@ namespace ShareX.ImageEffectsLib
     [Description("Replace color")]
     internal class ReplaceColor : ImageEffect
     {
-        [DefaultValue(typeof(Color), "White")]
+        [DefaultColor("White")]
         public Color SourceColor { get; set; }
 
         [DefaultValue(false)]
         public bool AutoSourceColor { get; set; }
 
-        [DefaultValue(typeof(Color), "Transparent")]
+        [DefaultColor("Transparent")]
         public Color TargetColor { get; set; }
 
         [DefaultValue(0)]

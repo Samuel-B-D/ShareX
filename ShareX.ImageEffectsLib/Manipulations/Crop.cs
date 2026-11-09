@@ -34,7 +34,7 @@ namespace ShareX.ImageEffectsLib
     {
         private ImageMargins margin;
 
-        [DefaultValue(typeof(ImageMargins), "0, 0, 0, 0")]
+        [DefaultImageMargins(0, 0, 0, 0)]
         public ImageMargins Margin
         {
             get

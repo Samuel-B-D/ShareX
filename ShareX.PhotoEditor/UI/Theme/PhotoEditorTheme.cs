@@ -25,7 +25,6 @@
 
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.Styling;
 using ShareX.AvaloniaUI.Theming;
@@ -35,9 +34,6 @@ namespace ShareX.PhotoEditor.UI.Theme;
 /// <summary>Applies the Photo editor's dark, compact theme to its windows.</summary>
 public static class PhotoEditorTheme
 {
-    private static readonly Uri BaseUri = new("avares://ShareX.PhotoEditor/");
-    private static readonly Uri ThemeUri = new("avares://ShareX.PhotoEditor/UI/Theme/PhotoEditorTheme.axaml");
-
     /// <summary>The configured ShareX accent color for code that draws without resources; follows accent changes.</summary>
     public static SolidColorBrush AccentBrush { get; } = CreateAccentBrush();
 
@@ -73,7 +69,7 @@ public static class PhotoEditorTheme
     public static void Apply(Window window)
     {
         window.RequestedThemeVariant = ThemeVariant.Dark;
-        window.Styles.Add(new StyleInclude(BaseUri) { Source = ThemeUri });
+        window.Styles.Add(new PhotoEditorStyles());
         window.Bind(Window.BackgroundProperty, window.GetResourceObservable("PE.Brush.Chrome"));
         window.FontFamily = new FontFamily("Segoe UI");
         window.FontSize = 12;

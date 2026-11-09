@@ -39,13 +39,13 @@ namespace ShareX.ImageEffectsLib
         [DefaultValue(ImageContentAlignment.TopLeft)]
         public ImageContentAlignment Placement { get; set; }
 
-        [DefaultValue(typeof(Point), "0, 0")]
+        [DefaultPoint(0, 0)]
         public Point Offset { get; set; }
 
         [DefaultValue(DrawImageSizeMode.DontResize), Description("How the image watermark should be rescaled, if at all.")]
         public DrawImageSizeMode SizeMode { get; set; }
 
-        [DefaultValue(typeof(Size), "0, 0")]
+        [DefaultSize(0, 0)]
         public Size Size { get; set; }
 
         [DefaultValue(ImageRotateFlipType.None)]

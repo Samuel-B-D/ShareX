@@ -1,4 +1,5 @@
 ﻿<Styles xmlns="https://github.com/avaloniaui"
+        x:Class="ShareX.ImageEditor.Presentation.Theming.EditorStyles"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:iconControls="using:ShareX.AvaloniaUI.Controls"
         xmlns:controls="using:ShareX.ImageEditor.Presentation.Controls">

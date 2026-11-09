@@ -33,7 +33,7 @@ namespace ShareX.ImageEffectsLib
     [Description("Background")]
     public class DrawBackground : ImageEffect
     {
-        [DefaultValue(typeof(Color), "Black")]
+        [DefaultColor("Black")]
         public Color Color { get; set; }
 
         [DefaultValue(false)]

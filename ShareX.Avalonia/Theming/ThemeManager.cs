@@ -26,7 +26,6 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Styling;
@@ -43,7 +42,7 @@ namespace ShareX.AvaloniaUI.Theming
         private static ThemeVariant _currentTheme = ShareXDark;
         private static ApplicationThemeOptions? _options;
         private static IPlatformSettings? _platformSettings;
-        private static ResourceInclude? _compactResources;
+        private static CompactModeResources? _compactResources;
         private static readonly ResourceDictionary SpacingResources = new();
 
         public static event EventHandler<ThemeVariant>? ThemeChanged;
@@ -175,16 +174,13 @@ namespace ShareX.AvaloniaUI.Theming
                 dictionaries.Add(SpacingResources);
             }
 
-            _compactResources ??= new ResourceInclude(new Uri("avares://ShareX.Avalonia/"))
-            {
-                Source = new Uri("avares://ShareX.Avalonia/Theming/CompactMode.axaml")
-            };
+            _compactResources ??= new CompactModeResources();
 
             bool changed = false;
 
             // CompactMode.axaml lists every spacing value with its compact size; the default size of the same
             // key comes from the application styles, and the configured spacing picks a point between the two.
-            foreach (object key in _compactResources.Loaded.Keys.ToArray())
+            foreach (object key in _compactResources.Keys.ToArray())
             {
                 if (key is not string name || !TryGetSpacingArea(name, out SpacingArea area) ||
                     !_compactResources.TryGetResource(key, _currentTheme, out object? compactValue) ||

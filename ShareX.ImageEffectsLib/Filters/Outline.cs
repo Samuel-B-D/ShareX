@@ -62,7 +62,7 @@ namespace ShareX.ImageEffectsLib
             }
         }
 
-        [DefaultValue(typeof(Color), "Black")]
+        [DefaultColor("Black")]
         public Color Color { get; set; }
 
         [DefaultValue(false)]

@@ -32,13 +32,13 @@ namespace ShareX.ImageEffectsLib
 {
     internal class Canvas : ImageEffect
     {
-        [DefaultValue(typeof(ImageMargins), "0, 0, 0, 0")]
+        [DefaultImageMargins(0, 0, 0, 0)]
         public ImageMargins Margin { get; set; }
 
         [DefaultValue(CanvasMarginMode.AbsoluteSize), Description("How the margin around the canvas will be calculated.")]
         public CanvasMarginMode MarginMode { get; set; }
 
-        [DefaultValue(typeof(Color), "Transparent")]
+        [DefaultColor("Transparent")]
         public Color Color { get; set; }
 
         public Canvas()

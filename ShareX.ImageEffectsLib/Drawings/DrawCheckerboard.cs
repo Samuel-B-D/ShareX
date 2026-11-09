@@ -48,10 +48,10 @@ namespace ShareX.ImageEffectsLib
             }
         }
 
-        [DefaultValue(typeof(Color), "LightGray")]
+        [DefaultColor("LightGray")]
         public Color Color { get; set; }
 
-        [DefaultValue(typeof(Color), "White")]
+        [DefaultColor("White")]
         public Color Color2 { get; set; }
 
         public DrawCheckerboard()

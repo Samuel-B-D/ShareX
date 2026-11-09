@@ -53,7 +53,7 @@ namespace ShareX.HelpersLib
         {
             public Color32(IntPtr pSourcePixel)
             {
-                this = (Color32)Marshal.PtrToStructure(pSourcePixel, typeof(Color32));
+                this = Marshal.PtrToStructure<Color32>(pSourcePixel);
             }
 
             /// <summary>

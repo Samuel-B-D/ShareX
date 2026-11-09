@@ -39,7 +39,7 @@ namespace ShareX.ImageEffectsLib
         [DefaultValue(ImageContentAlignment.BottomRight)]
         public ImageContentAlignment Placement { get; set; }
 
-        [DefaultValue(typeof(Point), "5, 5")]
+        [DefaultPoint(5, 5)]
         public Point Offset { get; set; }
 
         [DefaultValue(false), Description("If text watermark size bigger than source image then don't draw it.")]
@@ -47,7 +47,7 @@ namespace ShareX.ImageEffectsLib
 
         private FontSafe textFontSafe = new FontSafe();
 
-        [DefaultValue(typeof(ImageFont), "Arial, 11.25pt")]
+        [DefaultImageFont("Arial, 11.25pt")]
         public ImageFont TextFont
         {
             get
@@ -66,16 +66,16 @@ namespace ShareX.ImageEffectsLib
         [DefaultValue(ImageTextRenderingMode.SystemDefault)]
         public ImageTextRenderingMode TextRenderingMode { get; set; }
 
-        [DefaultValue(typeof(Color), "235, 235, 235")]
+        [DefaultColor("235, 235, 235")]
         public Color TextColor { get; set; }
 
         [DefaultValue(true)]
         public bool DrawTextShadow { get; set; }
 
-        [DefaultValue(typeof(Color), "Black")]
+        [DefaultColor("Black")]
         public Color TextShadowColor { get; set; }
 
-        [DefaultValue(typeof(Point), "-1, -1")]
+        [DefaultPoint(-1, -1)]
         public Point TextShadowOffset { get; set; }
 
         private int cornerRadius;
@@ -93,13 +93,13 @@ namespace ShareX.ImageEffectsLib
             }
         }
 
-        [DefaultValue(typeof(ImageMargins), "5, 5, 5, 5")]
+        [DefaultImageMargins(5, 5, 5, 5)]
         public ImageMargins Padding { get; set; }
 
         [DefaultValue(true)]
         public bool DrawBorder { get; set; }
 
-        [DefaultValue(typeof(Color), "Black")]
+        [DefaultColor("Black")]
         public Color BorderColor { get; set; }
 
         [DefaultValue(1)]
@@ -108,7 +108,7 @@ namespace ShareX.ImageEffectsLib
         [DefaultValue(true)]
         public bool DrawBackground { get; set; }
 
-        [DefaultValue(typeof(Color), "42, 47, 56")]
+        [DefaultColor("42, 47, 56")]
         public Color BackgroundColor { get; set; }
 
         [DefaultValue(false)]

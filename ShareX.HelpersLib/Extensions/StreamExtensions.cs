@@ -24,6 +24,7 @@
 #endregion License Information (GPL v3)
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.InteropServices;
 
@@ -138,9 +139,9 @@ namespace ShareX.HelpersLib
             }
         }
 
-        public static T Read<T>(this Stream stream)
+        public static T Read<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] T>(this Stream stream) where T : struct
         {
-            byte[] buffer = new byte[Marshal.SizeOf(typeof(T))];
+            byte[] buffer = new byte[Marshal.SizeOf<T>()];
             int bytes = stream.Read(buffer, 0, buffer.Length);
             if (bytes == 0) throw new InvalidOperationException("End-of-file reached");
             if (bytes != buffer.Length) throw new ArgumentException("File contains bad data");
@@ -149,7 +150,7 @@ namespace ShareX.HelpersLib
 
             try
             {
-                retval = (T)Marshal.PtrToStructure(hdl.AddrOfPinnedObject(), typeof(T));
+                retval = Marshal.PtrToStructure<T>(hdl.AddrOfPinnedObject());
             }
             finally
             {

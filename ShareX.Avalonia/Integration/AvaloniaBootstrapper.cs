@@ -26,7 +26,6 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
 
@@ -38,20 +37,10 @@ public sealed class ShareXAvaloniaApplication : Application
 {
     public override void Initialize()
     {
-        Uri baseUri = new Uri("avares://ShareX.Avalonia/");
-        Resources.MergedDictionaries.Add(new ResourceInclude(baseUri)
-        {
-            Source = new Uri("avares://ShareX.Avalonia/Theming/ShareXTheme.axaml")
-        });
+        Resources.MergedDictionaries.Add(new ShareXThemeResources());
         Styles.Add(new FluentTheme());
-        Styles.Add(new StyleInclude(baseUri)
-        {
-            Source = new Uri("avares://ShareX.Avalonia/Theming/ControlStyles.axaml")
-        });
-        Styles.Add(new StyleInclude(baseUri)
-        {
-            Source = new Uri("avares://ShareX.Avalonia/Theming/ToolStyles.axaml")
-        });
+        Styles.Add(new ControlStyles());
+        Styles.Add(new ToolStyles());
     }
 
     public override void OnFrameworkInitializationCompleted()

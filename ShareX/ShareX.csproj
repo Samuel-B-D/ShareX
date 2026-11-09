@@ -30,11 +30,6 @@
     <InvariantGlobalization>false</InvariantGlobalization>
     <StripSymbols>true</StripSymbols>
     <TrimMode>link</TrimMode>
-    <!--
-      Trimmed apps default DefaultValueAttribute.IsSupported to false, which turns [DefaultValue(typeof(Color), "Red")]
-      into a null value. ShareX applies those defaults through ApplyDefaultPropertyValues (image effects, gradients, ...).
-    -->
-    <_DefaultValueAttributeSupport>true</_DefaultValueAttributeSupport>
   </PropertyGroup>
   <!--
     Precompile only ShareX assemblies, which CI signs after publishing.

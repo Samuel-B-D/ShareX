@@ -33,10 +33,10 @@ namespace ShareX.ImageEffectsLib
     [Description("Selective color")]
     internal class SelectiveColor : ImageEffect
     {
-        [DefaultValue(typeof(Color), "White")]
+        [DefaultColor("White")]
         public Color LightColor { get; set; }
 
-        [DefaultValue(typeof(Color), "Black")]
+        [DefaultColor("Black")]
         public Color DarkColor { get; set; }
 
         [DefaultValue(10)]

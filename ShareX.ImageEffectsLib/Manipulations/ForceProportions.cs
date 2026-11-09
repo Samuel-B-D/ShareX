@@ -72,7 +72,7 @@ namespace ShareX.ImageEffectsLib
         [DefaultValue(ForceProportionsMethod.Grow)]
         public ForceProportionsMethod Method { get; set; } = ForceProportionsMethod.Grow;
 
-        [DefaultValue(typeof(Color), "Transparent")]
+        [DefaultColor("Transparent")]
         public Color GrowFillColor { get; set; } = Color.Transparent;
 
         public override SKBitmap Apply(SKBitmap bmp)

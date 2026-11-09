@@ -458,8 +458,9 @@ namespace ShareX.HelpersLib
         [DllImport("shell32.dll")]
         public static extern IntPtr SHAppBarMessage(uint dwMessage, [In] ref APPBARDATA pData);
 
-        [DllImport("shell32.dll", EntryPoint = "#727")]
-        public extern static int SHGetImageList(int iImageList, ref Guid riid, ref IImageList ppv);
+        // Returns a raw COM pointer; wrap it with StrategyBasedComWrappers (built-in COM interop is unavailable under NativeAOT).
+        [LibraryImport("shell32.dll", EntryPoint = "#727")]
+        public static partial int SHGetImageList(int iImageList, in Guid riid, out IntPtr ppv);
 
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
         public static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbFileInfo, uint uFlags);
@@ -476,9 +477,9 @@ namespace ShareX.HelpersLib
         [DllImport("shell32.dll")]
         public static extern void ILFree(IntPtr pidl);
 
-        [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
-        public static extern void SHCreateItemFromParsingName([In][MarshalAs(UnmanagedType.LPWStr)] string pszPath, IntPtr pbc,
-            [In][MarshalAs(UnmanagedType.LPStruct)] Guid riid, [Out][MarshalAs(UnmanagedType.Interface)] out IShellItemImageFactory ppv);
+        // Returns a raw COM pointer; wrap it with StrategyBasedComWrappers (built-in COM interop is unavailable under NativeAOT).
+        [LibraryImport("shell32.dll", StringMarshalling = StringMarshalling.Utf16)]
+        public static partial int SHCreateItemFromParsingName(string pszPath, IntPtr pbc, in Guid riid, out IntPtr ppv);
 
         #endregion shell32.dll
 

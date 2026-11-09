@@ -27,6 +27,7 @@ using System;
 using System.Drawing;
 using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace ShareX.HelpersLib
 {
@@ -256,7 +257,7 @@ namespace ShareX.HelpersLib
         public static WINDOWINFO Create()
         {
             WINDOWINFO wi = new WINDOWINFO();
-            wi.cbSize = (uint)Marshal.SizeOf(typeof(WINDOWINFO));
+            wi.cbSize = (uint)Marshal.SizeOf<WINDOWINFO>();
             return wi;
         }
     }
@@ -292,7 +293,7 @@ namespace ShareX.HelpersLib
         public static APPBARDATA NewAPPBARDATA()
         {
             APPBARDATA abd = new APPBARDATA();
-            abd.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
+            abd.cbSize = Marshal.SizeOf<APPBARDATA>();
             return abd;
         }
     }
@@ -671,7 +672,7 @@ namespace ShareX.HelpersLib
 
         public BITMAPINFOHEADER(int width, int height, ushort bpp)
         {
-            biSize = (uint)Marshal.SizeOf(typeof(BITMAPINFOHEADER));
+            biSize = (uint)Marshal.SizeOf<BITMAPINFOHEADER>();
             biPlanes = 1;
             biCompression = BI_COMPRESSION.BI_RGB;
             biWidth = width;
@@ -785,14 +786,6 @@ namespace ShareX.HelpersLib
         public short wParamH;
     }
 
-    [ComImport]
-    [Guid("0000010D-0000-0000-C000-000000000046")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    public interface IViewObject
-    {
-        void Draw([MarshalAs(UnmanagedType.U4)] uint dwAspect, int lindex, IntPtr pvAspect, [In] IntPtr ptd, IntPtr hdcTargetDev, IntPtr hdcDraw, [MarshalAs(UnmanagedType.Struct)] ref RECT lprcBounds, [In] IntPtr lprcWBounds, IntPtr pfnContinue, [MarshalAs(UnmanagedType.U4)] uint dwContinue);
-    }
-
     [StructLayout(LayoutKind.Sequential)]
     public struct FLASHWINFO
     {
@@ -900,10 +893,11 @@ namespace ShareX.HelpersLib
         public RECT rcImage;
     }
 
-    [ComImportAttribute()]
-    [GuidAttribute("46EB5926-582E-4017-9FDF-E8998DAA0950")]
-    [InterfaceTypeAttribute(ComInterfaceType.InterfaceIsIUnknown)]
-    public interface IImageList
+    // Source generated COM interface instead of [ComImport]: built-in COM interop is not available under NativeAOT
+    // (BuiltInComInteropSupport=false). Vtable order must match commoncontrols.h; IImageList parameters are passed as raw pointers.
+    [GeneratedComInterface]
+    [Guid("46EB5926-582E-4017-9FDF-E8998DAA0950")]
+    public partial interface IImageList
     {
         [PreserveSig]
         int Add(IntPtr hbmImage, IntPtr hbmMask, ref int pi);
@@ -933,10 +927,10 @@ namespace ShareX.HelpersLib
         int GetImageInfo(int i, ref IMAGEINFO pImageInfo);
 
         [PreserveSig]
-        int Copy(int iDst, IImageList punkSrc, int iSrc, int uFlags);
+        int Copy(int iDst, IntPtr punkSrc, int iSrc, int uFlags);
 
         [PreserveSig]
-        int Merge(int i1, IImageList punk2, int i2, int dx, int dy, ref Guid riid, ref IntPtr ppv);
+        int Merge(int i1, IntPtr punk2, int i2, int dx, int dy, ref Guid riid, ref IntPtr ppv);
 
         [PreserveSig]
         int Clone(ref Guid riid, ref IntPtr ppv);
@@ -978,7 +972,7 @@ namespace ShareX.HelpersLib
         int DragMove(int x, int y);
 
         [PreserveSig]
-        int SetDragCursorImage(ref IImageList punk, int iDrag, int dxHotspot, int dyHotspot);
+        int SetDragCursorImage(IntPtr punk, int iDrag, int dxHotspot, int dyHotspot);
 
         [PreserveSig]
         int DragShowNolock(int fShow);
@@ -1029,11 +1023,12 @@ namespace ShareX.HelpersLib
         public uint wPeriodMax;
     }
 
-    [ComImportAttribute()]
-    [GuidAttribute("bcc18b79-ba16-442f-80c4-8a59c30c463b")]
-    [InterfaceTypeAttribute(ComInterfaceType.InterfaceIsIUnknown)]
-    public interface IShellItemImageFactory
+    // Source generated COM interface instead of [ComImport]: built-in COM interop is not available under NativeAOT.
+    // Without [PreserveSig] a failing HRESULT is thrown as an exception, same as the previous built-in interop behavior.
+    [GeneratedComInterface]
+    [Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b")]
+    public partial interface IShellItemImageFactory
     {
-        void GetImage([In, MarshalAs(UnmanagedType.Struct)] SIZE size, [In] SIIGBF flags, [Out] out IntPtr phbm);
+        void GetImage(SIZE size, SIIGBF flags, out IntPtr phbm);
     }
 }

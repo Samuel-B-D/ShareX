@@ -62,7 +62,7 @@ namespace ShareX.ImageEffectsLib
             }
         }
 
-        [DefaultValue(typeof(Color), "White")]
+        [DefaultColor("White")]
         public Color Color { get; set; }
 
         [DefaultValue(false)]
@@ -70,7 +70,7 @@ namespace ShareX.ImageEffectsLib
 
         public GradientInfo Gradient { get; set; }
 
-        [DefaultValue(typeof(Point), "0, 0")]
+        [DefaultPoint(0, 0)]
         public Point Offset { get; set; }
 
         public Glow()

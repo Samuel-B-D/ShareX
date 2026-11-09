@@ -39,7 +39,7 @@ namespace ShareX.ImageEffectsLib
         [DefaultValue(ImageContentAlignment.TopLeft)]
         public ImageContentAlignment Placement { get; set; }
 
-        [DefaultValue(typeof(Point), "0, 0")]
+        [DefaultPoint(0, 0)]
         public Point Offset { get; set; }
 
         [DefaultValue(0)]
@@ -50,7 +50,7 @@ namespace ShareX.ImageEffectsLib
 
         private FontSafe fontSafe = new FontSafe();
 
-        [DefaultValue(typeof(ImageFont), "Arial, 36pt")]
+        [DefaultImageFont("Arial, 36pt")]
         public ImageFont Font
         {
             get
@@ -66,7 +66,7 @@ namespace ShareX.ImageEffectsLib
             }
         }
 
-        [DefaultValue(typeof(Color), "235, 235, 235")]
+        [DefaultColor("235, 235, 235")]
         public Color Color { get; set; }
 
         [DefaultValue(false)]
@@ -80,7 +80,7 @@ namespace ShareX.ImageEffectsLib
         [DefaultValue(5)]
         public int OutlineSize { get; set; }
 
-        [DefaultValue(typeof(Color), "235, 0, 0")]
+        [DefaultColor("235, 0, 0")]
         public Color OutlineColor { get; set; }
 
         [DefaultValue(false)]
@@ -91,10 +91,10 @@ namespace ShareX.ImageEffectsLib
         [DefaultValue(false)]
         public bool Shadow { get; set; }
 
-        [DefaultValue(typeof(Point), "0, 5")]
+        [DefaultPoint(0, 5)]
         public Point ShadowOffset { get; set; }
 
-        [DefaultValue(typeof(Color), "125, 0, 0, 0")]
+        [DefaultColor("125, 0, 0, 0")]
         public Color ShadowColor { get; set; }
 
         [DefaultValue(false)]

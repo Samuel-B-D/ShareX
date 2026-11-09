@@ -33,13 +33,13 @@ namespace ShareX.ImageEffectsLib
     [Description("RGB split")]
     internal class RGBSplit : ImageEffect
     {
-        [DefaultValue(typeof(Point), "-5, 0")]
+        [DefaultPoint(-5, 0)]
         public Point OffsetRed { get; set; } = new Point(-5, 0);
 
-        [DefaultValue(typeof(Point), "0, 0")]
+        [DefaultPoint(0, 0)]
         public Point OffsetGreen { get; set; }
 
-        [DefaultValue(typeof(Point), "5, 0")]
+        [DefaultPoint(5, 0)]
         public Point OffsetBlue { get; set; } = new Point(5, 0);
 
         public override SKBitmap Apply(SKBitmap bmp)

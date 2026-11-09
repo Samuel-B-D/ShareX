@@ -32,7 +32,7 @@ namespace ShareX.ImageEffectsLib
 {
     internal class Colorize : ImageEffect
     {
-        [DefaultValue(typeof(Color), "Red")]
+        [DefaultColor("Red")]
         public Color Color { get; set; }
 
         [DefaultValue(0f)]

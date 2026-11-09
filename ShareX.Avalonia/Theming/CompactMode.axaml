@@ -1,4 +1,5 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    x:Class="ShareX.AvaloniaUI.Theming.CompactModeResources"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!--
         The compact end of the spacing settings, close to the ShareX 21 spacing. ThemeManager blends each

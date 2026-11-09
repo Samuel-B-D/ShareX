@@ -23,7 +23,6 @@
 
 #endregion License Information (GPL v3)
 
-using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Threading;
 using ShareX.AvaloniaUI.Integration;
 using ShareX.ImageEditor.Presentation.ViewModels;
@@ -72,11 +71,7 @@ namespace ShareX.ImageEditor.Integration
                 {
                     if (!_editorStylesRegistered)
                     {
-                        Uri baseUri = new Uri("avares://ShareX.ImageEditor/");
-                        application.Styles.Add(new StyleInclude(baseUri)
-                        {
-                            Source = new Uri("avares://ShareX.ImageEditor/Presentation/Theming/EditorStyles.axaml")
-                        });
+                        application.Styles.Add(new EditorStyles());
                         _editorStylesRegistered = true;
                     }
                 }

@@ -65,10 +65,10 @@ namespace ShareX.ImageEffectsLib
         [DefaultValue(0f)]
         public float Darkness { get; set; }
 
-        [DefaultValue(typeof(Color), "Black")]
+        [DefaultColor("Black")]
         public Color Color { get; set; }
 
-        [DefaultValue(typeof(Point), "0, 0")]
+        [DefaultPoint(0, 0)]
         public Point Offset { get; set; }
 
         [DefaultValue(true)]

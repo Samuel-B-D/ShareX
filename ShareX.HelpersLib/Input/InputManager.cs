@@ -46,7 +46,7 @@ namespace ShareX.HelpersLib
         {
             INPUT[] inputList = InputList.ToArray();
             uint len = (uint)inputList.Length;
-            uint successfulInputs = NativeMethods.SendInput(len, inputList, Marshal.SizeOf(typeof(INPUT)));
+            uint successfulInputs = NativeMethods.SendInput(len, inputList, Marshal.SizeOf<INPUT>());
             if (AutoClearAfterSend) ClearInputs();
             return successfulInputs == len;
         }

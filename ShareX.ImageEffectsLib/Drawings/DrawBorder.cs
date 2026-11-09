@@ -54,7 +54,7 @@ namespace ShareX.ImageEffectsLib
         [DefaultValue(ImageDashStyle.Solid)]
         public ImageDashStyle DashStyle { get; set; }
 
-        [DefaultValue(typeof(Color), "Black")]
+        [DefaultColor("Black")]
         public Color Color { get; set; }
 
         [DefaultValue(false)]

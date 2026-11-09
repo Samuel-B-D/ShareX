@@ -27,6 +27,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 using System.Text;
 
 namespace ShareX.HelpersLib
@@ -235,7 +236,7 @@ namespace ShareX.HelpersLib
 
         public static bool GetExtendedFrameBounds(IntPtr handle, out Rectangle rectangle)
         {
-            int result = DwmGetWindowAttribute(handle, (int)DWMWINDOWATTRIBUTE.DWMWA_EXTENDED_FRAME_BOUNDS, out RECT rect, Marshal.SizeOf(typeof(RECT)));
+            int result = DwmGetWindowAttribute(handle, (int)DWMWINDOWATTRIBUTE.DWMWA_EXTENDED_FRAME_BOUNDS, out RECT rect, Marshal.SizeOf<RECT>());
             rectangle = rect;
             return result == 0;
         }
@@ -417,7 +418,7 @@ namespace ShareX.HelpersLib
             IntPtr[] infPtrs = new IntPtr[1];
 
             // alloc unmanaged memory
-            IntPtr mem = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(AVICOMPRESSOPTIONS)));
+            IntPtr mem = Marshal.AllocHGlobal(Marshal.SizeOf<AVICOMPRESSOPTIONS>());
 
             // copy from managed structure to unmanaged memory
             Marshal.StructureToPtr(options, mem, false);
@@ -429,7 +430,7 @@ namespace ShareX.HelpersLib
             int ret = AVISaveOptions(parentWindow, 0, 1, streams, infPtrs);
 
             // copy from unmanaged memory to managed structure
-            options = (AVICOMPRESSOPTIONS)Marshal.PtrToStructure(mem, typeof(AVICOMPRESSOPTIONS));
+            options = Marshal.PtrToStructure<AVICOMPRESSOPTIONS>(mem);
 
             // free AVI compression options
             AVISaveOptionsFree(1, infPtrs);
@@ -547,12 +548,20 @@ namespace ShareX.HelpersLib
             SHGFI flags = SHGFI.SysIconIndex | SHGFI.UseFileAttributes;
             SHGetFileInfo(filePath, 0, ref shfi, (uint)Marshal.SizeOf(shfi), (uint)flags);
 
-            IImageList spiml = null;
             Guid guil = new Guid(NativeConstants.IID_IImageList2);
 
-            SHGetImageList(jumboSize ? NativeConstants.SHIL_JUMBO : NativeConstants.SHIL_EXTRALARGE, ref guil, ref spiml);
+            Marshal.ThrowExceptionForHR(SHGetImageList(jumboSize ? NativeConstants.SHIL_JUMBO : NativeConstants.SHIL_EXTRALARGE, guil, out IntPtr pImageList));
+            IImageList spiml = WrapComPointer<IImageList>(pImageList);
             IntPtr hIcon = IntPtr.Zero;
-            spiml.GetIcon(shfi.iIcon, NativeConstants.ILD_TRANSPARENT | NativeConstants.ILD_IMAGE, ref hIcon);
+
+            try
+            {
+                spiml.GetIcon(shfi.iIcon, NativeConstants.ILD_TRANSPARENT | NativeConstants.ILD_IMAGE, ref hIcon);
+            }
+            finally
+            {
+                ((ComObject)(object)spiml).FinalRelease();
+            }
 
             Icon icon = (Icon)Icon.FromHandle(hIcon).Clone();
             DestroyIcon(hIcon);
@@ -567,7 +576,8 @@ namespace ShareX.HelpersLib
 
             try
             {
-                SHCreateItemFromParsingName(filePath, IntPtr.Zero, guid, out imageFactory);
+                Marshal.ThrowExceptionForHR(SHCreateItemFromParsingName(filePath, IntPtr.Zero, guid, out IntPtr pImageFactory));
+                imageFactory = WrapComPointer<IShellItemImageFactory>(pImageFactory);
                 SIZE size = new SIZE(thumbnailSize.Width, thumbnailSize.Height);
                 imageFactory.GetImage(size, SIIGBF.SIIGBF_RESIZETOFIT, out hbitmap);
                 return hbitmap != IntPtr.Zero ? WindowsImageInterop.FromHBitmap(hbitmap) : null;
@@ -579,10 +589,27 @@ namespace ShareX.HelpersLib
                     DeleteObject(hbitmap);
                 }
 
-                if (imageFactory != null && Marshal.IsComObject(imageFactory))
+                if ((object)imageFactory is ComObject comObject)
                 {
-                    Marshal.ReleaseComObject(imageFactory);
+                    comObject.FinalRelease();
                 }
+            }
+        }
+
+        private static readonly StrategyBasedComWrappers comWrappers = new StrategyBasedComWrappers();
+
+        /// <summary>
+        /// Wraps a raw COM pointer in a source generated COM object and releases the caller's reference to the pointer.
+        /// </summary>
+        private static T WrapComPointer<T>(IntPtr pointer) where T : class
+        {
+            try
+            {
+                return (T)comWrappers.GetOrCreateObjectForComInstance(pointer, CreateObjectFlags.UniqueInstance);
+            }
+            finally
+            {
+                Marshal.Release(pointer);
             }
         }
 
