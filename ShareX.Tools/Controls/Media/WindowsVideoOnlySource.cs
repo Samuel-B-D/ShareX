@@ -24,15 +24,20 @@
 #endregion License Information (GPL v3)
 
 using SharpGen.Runtime;
-using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 using Vortice.MediaFoundation;
+using ComObject = SharpGen.Runtime.ComObject;
 
 namespace ShareX.Tools;
 
 /// <summary>Exposes a native file source's video stream without constructing an audio decoder.</summary>
-internal sealed class WindowsVideoOnlySource : IDisposable
+internal sealed partial class WindowsVideoOnlySource : IDisposable
 {
+    // Built-in COM interop (Marshal.GetComInterfaceForObject) is not available under NativeAOT,
+    // so the managed bridges are exposed through source generated COM wrappers instead.
+    private static readonly StrategyBasedComWrappers comWrappers = new();
+
     private readonly NativeVideoSource _source;
     private readonly NativeExtension _extension;
     private int _disposed;
@@ -53,7 +58,7 @@ internal sealed class WindowsVideoOnlySource : IDisposable
                 throw;
             }
             _extension = new NativeExtension(_source);
-            Extension = new ComObject(Marshal.GetComInterfaceForObject(_extension, typeof(INativeVideoSourceExtension)));
+            Extension = new ComObject(CreateComInterface(_extension, new Guid(INativeVideoSourceExtension.IID)));
         }
         catch
         {
@@ -73,13 +78,29 @@ internal sealed class WindowsVideoOnlySource : IDisposable
         MediaFactory.MFShutdown();
     }
 
-    [ComVisible(true), ClassInterface(ClassInterfaceType.None)]
-    private sealed unsafe class NativeExtension : INativeVideoSourceExtension, IDisposable
+    /// <summary>Returns an owned (AddRef'd) pointer to <paramref name="iid"/> on a [GeneratedComClass] instance.</summary>
+    private static nint CreateComInterface(object instance, Guid iid)
+    {
+        // The returned CCW roots the managed object until its last native reference is released.
+        nint unknown = comWrappers.GetOrCreateComInterfaceForObject(instance, CreateComInterfaceFlags.None);
+        try
+        {
+            Marshal.ThrowExceptionForHR(Marshal.QueryInterface(unknown, in iid, out nint pointer));
+            return pointer;
+        }
+        finally
+        {
+            Marshal.Release(unknown);
+        }
+    }
+
+    [GeneratedComClass]
+    private sealed unsafe partial class NativeExtension : INativeVideoSourceExtension, IDisposable
     {
         private readonly object _gate = new();
         private ComObject? _source;
         public NativeExtension(NativeVideoSource source) =>
-            _source = new ComObject(Marshal.GetComInterfaceForObject(source, typeof(INativeVideoMediaSource)));
+            _source = new ComObject(CreateComInterface(source, new Guid(INativeVideoMediaSource.IID)));
 
         public int CanPlayType(int audioOnly, string mimeType, out int answer) { answer = 0; return 0; }
 
@@ -128,8 +149,8 @@ internal sealed class WindowsVideoOnlySource : IDisposable
         private static extern int MFInvokeCallback(nint result);
     }
 
-    [ComVisible(true), ClassInterface(ClassInterfaceType.None)]
-    private sealed unsafe class NativeVideoSource : INativeVideoMediaSource, INativeVideoEventGenerator, INativeVideoSourceService
+    [GeneratedComClass]
+    private sealed unsafe partial class NativeVideoSource : INativeVideoMediaSource, INativeVideoEventGenerator, INativeVideoSourceService
     {
         private readonly object _gate = new();
         private IMFMediaSource? _source;
@@ -317,18 +338,20 @@ internal sealed class WindowsVideoOnlySource : IDisposable
     }
 }
 
-// CLR COM marshaling requires public interfaces. These are native bridges, not managed player APIs.
-[ComVisible(true), Guid("2f69d622-20b5-41e9-afdf-89ced1dda04e"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown), EditorBrowsable(EditorBrowsableState.Never)]
-public interface INativeVideoSourceExtension
+// Native Media Foundation vtables exposed through source generated COM (built-in COM is unavailable under NativeAOT).
+[GeneratedComInterface, Guid(INativeVideoSourceExtension.IID)]
+internal partial interface INativeVideoSourceExtension
 {
+    public const string IID = "2f69d622-20b5-41e9-afdf-89ced1dda04e";
+
     [PreserveSig] int CanPlayType(int audioOnly, [MarshalAs(UnmanagedType.LPWStr)] string mimeType, out int answer);
     [PreserveSig] int BeginCreateObject([MarshalAs(UnmanagedType.BStr)] string url, nint byteStream, int type, out nint cancelCookie, nint callback, nint state);
     [PreserveSig] int CancelObjectCreation(nint cookie);
     [PreserveSig] int EndCreateObject(nint result, out nint source);
 }
 
-[ComVisible(true), Guid("2cd0bd52-bcd5-4b89-b62c-eadc0c031e7d"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown), EditorBrowsable(EditorBrowsableState.Never)]
-public interface INativeVideoEventGenerator
+[GeneratedComInterface, Guid("2cd0bd52-bcd5-4b89-b62c-eadc0c031e7d")]
+internal partial interface INativeVideoEventGenerator
 {
     [PreserveSig] int GetEvent(uint flags, out nint mediaEvent);
     [PreserveSig] int BeginGetEvent(nint callback, nint state);
@@ -336,9 +359,11 @@ public interface INativeVideoEventGenerator
     [PreserveSig] int QueueEvent(int type, ref Guid extendedType, int status, nint value);
 }
 
-[ComVisible(true), Guid("279a808d-aec7-40c8-9c6b-a6b492c78a66"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown), EditorBrowsable(EditorBrowsableState.Never)]
-public interface INativeVideoMediaSource
+[GeneratedComInterface, Guid(INativeVideoMediaSource.IID)]
+internal partial interface INativeVideoMediaSource
 {
+    public const string IID = "279a808d-aec7-40c8-9c6b-a6b492c78a66";
+
     [PreserveSig] int GetEvent(uint flags, out nint mediaEvent);
     [PreserveSig] int BeginGetEvent(nint callback, nint state);
     [PreserveSig] int EndGetEvent(nint result, out nint mediaEvent);
@@ -351,8 +376,8 @@ public interface INativeVideoMediaSource
     [PreserveSig] int Shutdown();
 }
 
-[ComVisible(true), Guid("fa993888-4383-415a-a930-dd472a8cf6f7"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown), EditorBrowsable(EditorBrowsableState.Never)]
-public interface INativeVideoSourceService
+[GeneratedComInterface, Guid("fa993888-4383-415a-a930-dd472a8cf6f7")]
+internal partial interface INativeVideoSourceService
 {
     [PreserveSig] int GetService(ref Guid service, ref Guid iid, out nint result);
 }

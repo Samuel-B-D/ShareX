@@ -24,21 +24,22 @@
 #endregion License Information (GPL v3)
 
 using SharpGen.Runtime;
-using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 using Vortice.MediaFoundation;
+using ComObject = SharpGen.Runtime.ComObject;
 
 namespace ShareX.ScreenRecordingLib.Native;
 
 /// <summary>Media Foundation notifies the pool after releasing the tracked GPU sample.</summary>
-internal sealed class SampleReleaseCallback : ComObject, IMFAsyncCallback
+internal sealed partial class SampleReleaseCallback : ComObject, IMFAsyncCallback
 {
     private readonly NativeCallback callback;
 
     public SampleReleaseCallback(Action released) : this(new NativeCallback(released)) { }
 
     private SampleReleaseCallback(NativeCallback callback)
-        : base(Marshal.GetComInterfaceForObject(callback, typeof(INativeAsyncCallback)))
+        : base(ComCallableWrapper.Create(callback, new Guid(INativeAsyncCallback.IID)))
     {
         this.callback = callback;
     }
@@ -52,12 +53,11 @@ internal sealed class SampleReleaseCallback : ComObject, IMFAsyncCallback
 
     public Result Invoke(IMFAsyncResult result) => new(callback.Invoke(result.NativePointer));
 
-    // A CLR COM callable wrapper roots the callback until its last native reference is released.
+    // A ComWrappers COM callable wrapper roots the callback until its last native reference is released.
     // SharpGen's CallbackBase uses a weak handle, which is insufficient for queued callbacks
     // surviving pool disposal on a failed recording.
-    [ComVisible(true)]
-    [ClassInterface(ClassInterfaceType.None)]
-    private sealed class NativeCallback(Action released) : INativeAsyncCallback
+    [GeneratedComClass]
+    private sealed partial class NativeCallback(Action released) : INativeAsyncCallback
     {
         public int GetParameters(out uint flags, out uint queue)
         {
@@ -73,13 +73,12 @@ internal sealed class SampleReleaseCallback : ComObject, IMFAsyncCallback
     }
 }
 
-[ComVisible(true)]
-[Guid("a27003cf-2354-4f2a-8d6a-ab7cff15437e")]
-[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-[EditorBrowsable(EditorBrowsableState.Never)]
-// CLR COM marshaling requires a public interface; this is not part of the recorder's managed API.
-public interface INativeAsyncCallback
+// IMFAsyncCallback vtable, exposed through source generated COM (built-in COM is unavailable under NativeAOT).
+[GeneratedComInterface, Guid(INativeAsyncCallback.IID)]
+internal partial interface INativeAsyncCallback
 {
+    public const string IID = "a27003cf-2354-4f2a-8d6a-ab7cff15437e";
+
     [PreserveSig] int GetParameters(out uint flags, out uint queue);
     [PreserveSig] int Invoke(nint result);
 }

@@ -24,9 +24,10 @@
 #endregion License Information (GPL v3)
 
 using SharpGen.Runtime;
-using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 using Vortice.MediaFoundation;
+using ComObject = SharpGen.Runtime.ComObject;
 
 namespace ShareX.ScreenRecordingLib.Native;
 
@@ -43,13 +44,13 @@ internal static unsafe class SourceReaderOperations
     }
 }
 
-internal sealed class SourceReaderCallback : ComObject, IMFSourceReaderCallback
+internal sealed partial class SourceReaderCallback : ComObject, IMFSourceReaderCallback
 {
     private readonly NativeCallback callback;
     public SourceReaderCallback(Action<int, SourceReaderFlag, nint> received)
         : this(new NativeCallback(received)) { }
     private SourceReaderCallback(NativeCallback callback)
-        : base(Marshal.GetComInterfaceForObject(callback, typeof(INativeSourceReaderCallback))) => this.callback = callback;
+        : base(ComCallableWrapper.Create(callback, new Guid(INativeSourceReaderCallback.IID))) => this.callback = callback;
 
     public void Detach() => callback.Detach();
     public void OnReadSample(Result status, int stream, int flags, long timestamp, IMFSample sample) =>
@@ -57,9 +58,9 @@ internal sealed class SourceReaderCallback : ComObject, IMFSourceReaderCallback
     public void OnFlush(int stream) { }
     public void OnEvent(int stream, IMFMediaEvent mediaEvent) { }
 
-    // The CLR COM callable wrapper keeps queued native callbacks alive, including after shutdown.
-    [ComVisible(true), ClassInterface(ClassInterfaceType.None)]
-    private sealed class NativeCallback(Action<int, SourceReaderFlag, nint> received) : INativeSourceReaderCallback
+    // The ComWrappers COM callable wrapper keeps queued native callbacks alive, including after shutdown.
+    [GeneratedComClass]
+    private sealed partial class NativeCallback(Action<int, SourceReaderFlag, nint> received) : INativeSourceReaderCallback
     {
         private Action<int, SourceReaderFlag, nint>? received = received;
         public void Detach() => Interlocked.Exchange(ref received, null);
@@ -73,11 +74,12 @@ internal sealed class SourceReaderCallback : ComObject, IMFSourceReaderCallback
     }
 }
 
-[ComVisible(true), Guid("deec8d99-fa1d-4d82-84c2-2c8969944867")]
-[InterfaceType(ComInterfaceType.InterfaceIsIUnknown), EditorBrowsable(EditorBrowsableState.Never)]
-// CLR COM marshaling requires a public interface; this is not a managed recorder API.
-public interface INativeSourceReaderCallback
+// IMFSourceReaderCallback vtable, exposed through source generated COM (built-in COM is unavailable under NativeAOT).
+[GeneratedComInterface, Guid(INativeSourceReaderCallback.IID)]
+internal partial interface INativeSourceReaderCallback
 {
+    public const string IID = "deec8d99-fa1d-4d82-84c2-2c8969944867";
+
     [PreserveSig] int OnReadSample(int status, uint stream, uint flags, long timestamp, nint sample);
     [PreserveSig] int OnFlush(uint stream);
     [PreserveSig] int OnEvent(uint stream, nint mediaEvent);
