@@ -4,7 +4,6 @@
         xmlns:controls="using:ShareX.AvaloniaUI.Controls"
         xmlns:res="using:ShareX.Localization"
         x:Class="ShareX.FileExistWindow"
-        x:CompileBindings="False"
         Title="{x:Static res:Strings.FileExistWindow_Title}"
         Width="580"
         SizeToContent="Height"

@@ -137,7 +137,7 @@
                 <StackPanel Classes="toolbar-row">
                     <ContentControl x:Name="MainToolbarLeadingContentHost"
                                     IsVisible="False"/>
-                    <ItemsControl ItemsSource="{ReflectionBinding VisibleToolbarItems}">
+                    <ItemsControl ItemsSource="{Binding $self.((vm:EditorToolbarAdapter)DataContext).VisibleToolbarItems}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Classes="toolbar-row"/>

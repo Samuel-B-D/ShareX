@@ -3,7 +3,6 @@
         xmlns:icons="using:ShareX.Icons"
         xmlns:controls="using:ShareX.AvaloniaUI.Controls"
         x:Class="ShareX.NotificationWindow"
-        x:CompileBindings="False"
         CanResize="False"
         ShowActivated="False"
         ShowInTaskbar="False"

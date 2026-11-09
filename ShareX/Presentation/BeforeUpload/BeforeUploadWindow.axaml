@@ -5,7 +5,7 @@
         xmlns:local="using:ShareX"
         xmlns:res="using:ShareX.Localization"
         x:Class="ShareX.BeforeUploadWindow"
-        x:CompileBindings="False"
+        x:DataType="local:BeforeUploadWindow"
         Title="{x:Static res:Strings.BeforeUploadWindow_Title}"
         Width="900"
         Height="560"
@@ -109,7 +109,7 @@
                              ScrollViewer.VerticalScrollBarVisibility="Auto"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <ListBox.ItemTemplate>
-                            <DataTemplate DataType="local:BeforeUploadDestinationOption">
+                            <DataTemplate x:DataType="local:BeforeUploadDestinationOption">
                                 <RadioButton Classes="destination-option"
                                              GroupName="UploadDestination"
                                              Content="{Binding Label}"

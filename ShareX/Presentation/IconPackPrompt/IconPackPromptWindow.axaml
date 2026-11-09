@@ -4,7 +4,6 @@
         xmlns:controls="using:ShareX.AvaloniaUI.Controls"
         xmlns:res="using:ShareX.Localization"
         x:Class="ShareX.IconPackPromptWindow"
-        x:CompileBindings="False"
         Title="{x:Static res:Strings.IconPackPrompt_Title}"
         Width="620"
         SizeToContent="Height"

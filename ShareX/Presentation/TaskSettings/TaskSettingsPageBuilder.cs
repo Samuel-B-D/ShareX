@@ -1371,11 +1371,10 @@ internal sealed class TaskSettingsPageBuilder
     {
         CheckBox checkBox = new() { Content = text, DataContext = value };
         checkBox.Classes.Add("setting");
-        checkBox.Bind(ToggleButton.IsCheckedProperty, new Binding(nameof(BoundValue<bool>.Value))
-        {
-            Source = value,
-            Mode = BindingMode.TwoWay
-        });
+        checkBox.Bind(ToggleButton.IsCheckedProperty, CompiledBinding.Create<BoundValue<bool>, bool>(
+            x => x.Value,
+            source: value,
+            mode: BindingMode.TwoWay));
         return checkBox;
     }
 
@@ -1385,12 +1384,11 @@ internal sealed class TaskSettingsPageBuilder
     {
         TextBox textBox = new() { DataContext = value };
         textBox.Classes.Add("form-control");
-        textBox.Bind(TextBox.TextProperty, new Binding(nameof(BoundValue<string>.Value))
-        {
-            Source = value,
-            Mode = BindingMode.TwoWay,
-            UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
-        });
+        textBox.Bind(TextBox.TextProperty, CompiledBinding.Create<BoundValue<string>, string>(
+            x => x.Value,
+            source: value,
+            mode: BindingMode.TwoWay,
+            updateSourceTrigger: UpdateSourceTrigger.PropertyChanged));
         return textBox;
     }
 
@@ -1533,11 +1531,10 @@ internal sealed class TaskSettingsPageBuilder
             Increment = increment
         };
         number.Classes.Add("form-control");
-        number.Bind(NumericUpDown.ValueProperty, new Binding(nameof(BoundValue<decimal?>.Value))
-        {
-            Source = value,
-            Mode = BindingMode.TwoWay
-        });
+        number.Bind(NumericUpDown.ValueProperty, CompiledBinding.Create<BoundValue<decimal?>, decimal?>(
+            x => x.Value,
+            source: value,
+            mode: BindingMode.TwoWay));
         return number;
     }
 
@@ -1917,11 +1914,10 @@ internal sealed class TaskSettingsPageBuilder
             DataContext = binding
         };
         comboBox.Classes.Add("form-control");
-        comboBox.Bind(SelectingItemsControl.SelectedItemProperty, new Binding(nameof(BoundValue<ChoiceOption<T>>.Value))
-        {
-            Source = binding,
-            Mode = BindingMode.TwoWay
-        });
+        comboBox.Bind(SelectingItemsControl.SelectedItemProperty, CompiledBinding.Create<BoundValue<ChoiceOption<T>>, ChoiceOption<T>>(
+            x => x.Value,
+            source: binding,
+            mode: BindingMode.TwoWay));
         return comboBox;
     }
 
@@ -2007,11 +2003,10 @@ internal sealed class TaskSettingsPageBuilder
 
     private static void BindEnabled(Control control, BoundValue<bool> value, bool invert = false)
     {
-        control.Bind(Control.IsEnabledProperty, new Binding(nameof(BoundValue<bool>.Value))
-        {
-            Source = value,
-            Converter = invert ? InverseBooleanConverter.Instance : null
-        });
+        control.Bind(Control.IsEnabledProperty, CompiledBinding.Create<BoundValue<bool>, bool>(
+            x => x.Value,
+            source: value,
+            converter: invert ? InverseBooleanConverter.Instance : null));
     }
 
     private async Task<string?> PickFolderAsync(string title)

@@ -4,7 +4,6 @@
         xmlns:controls="using:ShareX.AvaloniaUI.Controls"
         xmlns:localization="using:ShareX.UploadersLib.Localization"
         x:Class="ShareX.UploadersLib.TextUploadWindow"
-        x:CompileBindings="False"
         Title="{x:Static localization:Strings.TextUploadWindow_ShareX_Text_upload}"
         Width="680"
         Height="560"

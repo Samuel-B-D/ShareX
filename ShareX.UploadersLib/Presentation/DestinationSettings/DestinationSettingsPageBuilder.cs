@@ -776,8 +776,8 @@ internal sealed class DestinationSettingsPageBuilder
         DestinationValue<int> value = new(selectedIndex, index => member.SetValue(owner, index));
         editor = new ComboBox { ItemsSource = displayedItems, DataContext = value };
         editor.Classes.Add("form-control");
-        editor.Bind(SelectingItemsControl.SelectedIndexProperty, new Binding(nameof(DestinationValue<int>.Value))
-        { Source = value, Mode = BindingMode.TwoWay });
+        editor.Bind(SelectingItemsControl.SelectedIndexProperty,
+            CompiledBinding.Create((DestinationValue<int> x) => x.Value, source: value, mode: BindingMode.TwoWay));
         return true;
     }
 
@@ -1061,7 +1061,8 @@ internal sealed class DestinationSettingsPageBuilder
     {
         DestinationValue<bool> value = new(getter(), setter);
         CheckBox check = new() { Content = text, DataContext = value }; check.Classes.Add("setting");
-        check.Bind(ToggleButton.IsCheckedProperty, new Binding(nameof(DestinationValue<bool>.Value)) { Source = value, Mode = BindingMode.TwoWay });
+        check.Bind(ToggleButton.IsCheckedProperty,
+            CompiledBinding.Create((DestinationValue<bool> x) => x.Value, source: value, mode: BindingMode.TwoWay));
         return check;
     }
 
@@ -1069,8 +1070,9 @@ internal sealed class DestinationSettingsPageBuilder
     {
         DestinationValue<string> value = new(getter(), setter);
         TextBox text = new() { DataContext = value }; text.Classes.Add("form-control");
-        text.Bind(TextBox.TextProperty, new Binding(nameof(DestinationValue<string>.Value))
-        { Source = value, Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged });
+        text.Bind(TextBox.TextProperty,
+            CompiledBinding.Create((DestinationValue<string> x) => x.Value, source: value, mode: BindingMode.TwoWay,
+                updateSourceTrigger: UpdateSourceTrigger.PropertyChanged));
         return text;
     }
 
@@ -1087,7 +1089,8 @@ internal sealed class DestinationSettingsPageBuilder
             type == typeof(long) ? long.MaxValue : type == typeof(ulong) ? ulong.MaxValue : 1_000_000_000;
         NumericUpDown number = new() { DataContext = value, Minimum = min, Maximum = max };
         number.Classes.Add("form-control");
-        number.Bind(NumericUpDown.ValueProperty, new Binding(nameof(DestinationValue<decimal?>.Value)) { Source = value, Mode = BindingMode.TwoWay });
+        number.Bind(NumericUpDown.ValueProperty,
+            CompiledBinding.Create((DestinationValue<decimal?> x) => x.Value, source: value, mode: BindingMode.TwoWay));
         return number;
     }
 
@@ -1099,8 +1102,8 @@ internal sealed class DestinationSettingsPageBuilder
         DestinationChoice selected = choices.FirstOrDefault(x => Equals(x.Value, current)) ?? choices[0];
         DestinationValue<DestinationChoice> binding = new(selected, value => setter(value.Value));
         ComboBox combo = new() { ItemsSource = choices, DataContext = binding }; combo.Classes.Add("form-control");
-        combo.Bind(SelectingItemsControl.SelectedItemProperty, new Binding(nameof(DestinationValue<DestinationChoice>.Value))
-        { Source = binding, Mode = BindingMode.TwoWay });
+        combo.Bind(SelectingItemsControl.SelectedItemProperty,
+            CompiledBinding.Create((DestinationValue<DestinationChoice> x) => x.Value, source: binding, mode: BindingMode.TwoWay));
         return combo;
     }
 

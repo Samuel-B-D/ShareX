@@ -6,7 +6,7 @@
         xmlns:res="using:ShareX.Localization"
         xmlns:local="using:ShareX"
         x:Class="ShareX.MainWindow"
-        x:CompileBindings="False"
+        x:DataType="local:MainWindow"
         Title="ShareX"
         Width="900"
         Height="720"
@@ -402,7 +402,7 @@
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="local:ThumbnailItemViewModel">
+                                <DataTemplate x:DataType="local:ThumbnailItemViewModel">
                                     <Border Classes="task-row"
                                             Classes.selected="{Binding IsSelected}"
                                             PointerPressed="OnThumbnailPointerPressed"
@@ -412,29 +412,29 @@
                                             DoubleTapped="OnTaskRowDoubleTapped"
                                             ClipToBounds="True">
                                         <DockPanel HorizontalAlignment="Left"
-                                                   MinWidth="{Binding TaskListColumns.MinRowWidth, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                   MinWidth="{Binding TaskListColumns.MinRowWidth, RelativeSource={RelativeSource AncestorType=local:MainWindow}}">
                                             <controls:IconPresenter DockPanel.Dock="Left"
                                                                     Classes="task-status"
                                                                     Classes.failed="{Binding IsFailed}"
                                                                     Icon="{Binding ListStatusIcon}"/>
                                             <TextBlock DockPanel.Dock="Left" Classes="task-cell"
-                                                       Width="{Binding TaskListColumns.FilenameWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                       Width="{Binding TaskListColumns.FilenameWidth, RelativeSource={RelativeSource AncestorType=local:MainWindow}}"
                                                        Text="{Binding Title}"
                                                        ToolTip.Tip="{Binding Title}"/>
                                             <TextBlock DockPanel.Dock="Left" Classes="task-cell"
-                                                       Width="{Binding TaskListColumns.StatusWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                       Width="{Binding TaskListColumns.StatusWidth, RelativeSource={RelativeSource AncestorType=local:MainWindow}}"
                                                        Text="{Binding ListStatus}"/>
                                             <TextBlock DockPanel.Dock="Left" Classes="task-cell"
-                                                       Width="{Binding TaskListColumns.ProgressWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                       Width="{Binding TaskListColumns.ProgressWidth, RelativeSource={RelativeSource AncestorType=local:MainWindow}}"
                                                        Text="{Binding ListProgress}"/>
                                             <TextBlock DockPanel.Dock="Left" Classes="task-cell"
-                                                       Width="{Binding TaskListColumns.SpeedWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                       Width="{Binding TaskListColumns.SpeedWidth, RelativeSource={RelativeSource AncestorType=local:MainWindow}}"
                                                        Text="{Binding ListSpeed}"/>
                                             <TextBlock DockPanel.Dock="Left" Classes="task-cell"
-                                                       Width="{Binding TaskListColumns.ElapsedWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                       Width="{Binding TaskListColumns.ElapsedWidth, RelativeSource={RelativeSource AncestorType=local:MainWindow}}"
                                                        Text="{Binding ListElapsed}"/>
                                             <TextBlock DockPanel.Dock="Left" Classes="task-cell"
-                                                       Width="{Binding TaskListColumns.RemainingWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                       Width="{Binding TaskListColumns.RemainingWidth, RelativeSource={RelativeSource AncestorType=local:MainWindow}}"
                                                        Text="{Binding ListRemaining}"/>
                                             <TextBlock Classes="task-cell"
                                                        Text="{Binding ListUrl}"
@@ -456,7 +456,7 @@
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="local:ThumbnailItemViewModel">
+                            <DataTemplate x:DataType="local:ThumbnailItemViewModel">
                                 <Border Classes="thumbnail-card"
                                         Classes.selected="{Binding IsSelected}"
                                         PointerPressed="OnThumbnailPointerPressed"
@@ -641,7 +641,7 @@
                             <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
                                 <ItemsControl ItemsSource="{Binding HotkeyTips}" Grid.IsSharedSizeScope="True">
                                     <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="local:HotkeyTipViewModel">
+                                        <DataTemplate x:DataType="local:HotkeyTipViewModel">
                                             <Border BorderBrush="{DynamicResource ShareX.Brush.Border}" BorderThickness="0,1,0,0" Padding="6,8">
                                                 <Grid ColumnSpacing="10">
                                                     <Grid.ColumnDefinitions>

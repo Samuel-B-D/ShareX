@@ -16,9 +16,9 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
-        <Style Selector="TreeViewItem">
-            <Setter Property="IsVisible" Value="{ReflectionBinding IsVisible}"/>
-            <Setter Property="IsExpanded" Value="{ReflectionBinding IsExpanded, Mode=TwoWay}"/>
+        <Style Selector="TreeViewItem" x:DataType="controls:SettingsNavigationItem">
+            <Setter Property="IsVisible" Value="{Binding IsVisible}"/>
+            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="MinHeight" Value="{DynamicResource ShareX.Density.Settings.NavItemMinHeight}"/>
             <Setter Property="Margin" Value="0,1"/>

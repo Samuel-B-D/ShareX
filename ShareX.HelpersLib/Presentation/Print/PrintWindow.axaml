@@ -4,7 +4,6 @@
         xmlns:controls="using:ShareX.AvaloniaUI.Controls"
         xmlns:localization="using:ShareX.HelpersLib.Localization"
         x:Class="ShareX.HelpersLib.PrintWindow"
-        x:CompileBindings="False"
         Title="{x:Static localization:Strings.PrintWindow_Title}"
         Width="470"
         SizeToContent="Height"

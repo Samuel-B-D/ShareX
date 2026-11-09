@@ -52,7 +52,7 @@
                                          SelectionMode="Multiple"
                                          SelectionChanged="OnSelectionChanged">
                                     <ListBox.ItemTemplate>
-                                        <DataTemplate x:CompileBindings="False">
+                                        <DataTemplate x:DataType="x:String">
                                             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" Margin="4,3">
                                                 <controls:IconPresenter Grid.Column="0"
                                                                         Icon="{x:Static icons:AppIcons.Image}"

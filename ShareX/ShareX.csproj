@@ -57,7 +57,6 @@
         and resolves image effects by type name (TypeNameHandling.Auto + KnownTypesSerializationBinder).
       - Uploader services, custom uploader functions and image effects are discovered with Assembly.GetTypes().
       - Settings pages are generated from PropertyInfo/TypeDescriptor metadata.
-      - 22 windows use Avalonia reflection bindings (x:CompileBindings="False").
       Framework and third-party assemblies are still trimmed.
     -->
     <TrimmerRootAssembly Include="ShareX" />

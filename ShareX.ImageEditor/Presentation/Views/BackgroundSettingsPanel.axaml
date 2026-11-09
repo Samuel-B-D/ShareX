@@ -264,7 +264,7 @@
                                         Padding="0"
                                         Margin="2"
                                         ToolTip.Tip="{Binding Name}"
-                                        Command="{ReflectionBinding DataContext.ApplyGradientPresetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).ApplyGradientPresetCommand}"
                                         CommandParameter="{Binding}">
                                     <Border Width="46"
                                             Height="36"

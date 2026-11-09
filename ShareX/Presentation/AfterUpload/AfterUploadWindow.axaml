@@ -5,7 +5,7 @@
         xmlns:local="using:ShareX"
         xmlns:res="using:ShareX.Localization"
         x:Class="ShareX.AfterUploadWindow"
-        x:CompileBindings="False"
+        x:DataType="local:AfterUploadWindow"
         Title="{x:Static res:Strings.AfterUploadWindow_Title}"
         Width="940"
         Height="580"
@@ -122,7 +122,7 @@
                              ScrollViewer.VerticalScrollBarVisibility="Auto"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <ListBox.ItemTemplate>
-                            <DataTemplate DataType="local:AfterUploadFormatItem">
+                            <DataTemplate x:DataType="local:AfterUploadFormatItem">
                                 <Grid ColumnDefinitions="130,*" ColumnSpacing="10">
                                     <StackPanel Spacing="1" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Group}"

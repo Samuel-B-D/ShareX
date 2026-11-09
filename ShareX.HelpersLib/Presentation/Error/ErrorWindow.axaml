@@ -4,7 +4,6 @@
         xmlns:controls="using:ShareX.AvaloniaUI.Controls"
         xmlns:localization="using:ShareX.HelpersLib.Localization"
         x:Class="ShareX.HelpersLib.ErrorWindow"
-        x:CompileBindings="False"
         Title="{x:Static localization:Strings.ErrorWindow_Title}"
         Width="760"
         Height="560"

@@ -5,7 +5,7 @@
         xmlns:local="using:ShareX"
         xmlns:res="using:ShareX.Localization"
         x:Class="ShareX.AfterCaptureWindow"
-        x:CompileBindings="False"
+        x:DataType="local:AfterCaptureWindow"
         Title="{x:Static res:Strings.AfterCaptureWindow_Title}"
         Width="1040"
         Height="680"
@@ -98,7 +98,7 @@
                             </StackPanel>
                             <ItemsControl ItemsSource="{Binding GoalOptions}">
                                 <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="local:AfterCaptureGoalOption">
+                                    <DataTemplate x:DataType="local:AfterCaptureGoalOption">
                                         <RadioButton Classes="goal-option"
                                                      GroupName="AfterCaptureGoal"
                                                      IsChecked="{Binding IsSelected, Mode=TwoWay}"
@@ -116,7 +116,7 @@
                                 <TextBlock Classes="section-title" Text="{x:Static res:Strings.AfterCaptureWindow_RequiredHeading}"/>
                                 <ItemsControl ItemsSource="{Binding RequiredOptions}">
                                     <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="x:String">
+                                        <DataTemplate x:DataType="x:String">
                                             <CheckBox Classes="task-option"
                                                       Content="{Binding}"
                                                       IsChecked="True"
@@ -133,7 +133,7 @@
                                           HorizontalAlignment="Stretch"
                                           AutomationProperties.Name="{x:Static res:Strings.AfterCaptureWindow_Destinations}">
                                     <ComboBox.ItemTemplate>
-                                        <DataTemplate DataType="local:AfterCaptureDestinationOption">
+                                        <DataTemplate x:DataType="local:AfterCaptureDestinationOption">
                                             <TextBlock Text="{Binding Label}"/>
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
@@ -144,7 +144,7 @@
                                 <TextBlock Classes="section-title" Text="{x:Static res:Strings.AfterCaptureWindow_AlsoHeading}"/>
                                 <ItemsControl ItemsSource="{Binding AfterCaptureOptions}">
                                     <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="local:AfterCaptureTaskOption">
+                                        <DataTemplate x:DataType="local:AfterCaptureTaskOption">
                                             <CheckBox Classes="task-option"
                                                       Content="{Binding Label}"
                                                       IsChecked="{Binding IsChecked, Mode=TwoWay}"
@@ -158,7 +158,7 @@
                                 <TextBlock Classes="section-title" Text="{x:Static res:Strings.AfterCaptureWindow_AfterUpload}"/>
                                 <ItemsControl ItemsSource="{Binding AfterUploadOptions}">
                                     <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="local:AfterCaptureTaskOption">
+                                        <DataTemplate x:DataType="local:AfterCaptureTaskOption">
                                             <CheckBox Classes="task-option"
                                                       Content="{Binding Label}"
                                                       IsChecked="{Binding IsChecked, Mode=TwoWay}"/>

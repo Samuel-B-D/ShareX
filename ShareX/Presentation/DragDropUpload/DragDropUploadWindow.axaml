@@ -4,7 +4,6 @@
         xmlns:controls="using:ShareX.AvaloniaUI.Controls"
         xmlns:res="using:ShareX.Localization"
         x:Class="ShareX.DragDropUploadWindow"
-        x:CompileBindings="False"
         Title="{x:Static res:Strings.DragDropUploadWindow_Title}"
         Width="150"
         Height="150"

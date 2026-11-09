@@ -1,8 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:res="using:ShareX.Localization"
+        xmlns:local="using:ShareX"
         x:Class="ShareX.AboutWindow"
-        x:CompileBindings="False"
         Title="{x:Static res:Strings.AboutWindow_Title}"
         Width="920"
         Height="540"
@@ -110,12 +110,12 @@
                               HorizontalAlignment="Center"
                               VerticalAlignment="Center">
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate>
+                        <DataTemplate x:DataType="local:AboutSection">
                             <StackPanel Margin="0,0,8,14">
                                 <TextBlock Classes="about-heading" Text="{Binding Title}"/>
                                 <ItemsControl ItemsSource="{Binding Items}">
                                     <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
+                                        <DataTemplate x:DataType="local:AboutLinkItem">
                                             <Grid ColumnDefinitions="180,*" Margin="0,2">
                                                 <TextBlock Classes="about-label"
                                                            Text="{Binding Label}"

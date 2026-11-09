@@ -11,8 +11,7 @@
              d:DesignWidth="420"
              d:DesignHeight="420"
              x:Class="ShareX.ImageEditor.Presentation.Views.Dialogs.SchemaDrivenEffectDialog"
-             x:DataType="dialogs:SchemaDrivenEffectDialog"
-             x:CompileBindings="False">
+             x:DataType="dialogs:SchemaDrivenEffectDialog">
     <StackPanel Spacing="0">
         <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
             <iconControls:IconPresenter Icon="{Binding Definition.Icon}"

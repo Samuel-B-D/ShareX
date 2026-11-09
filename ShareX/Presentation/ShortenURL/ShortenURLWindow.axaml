@@ -4,7 +4,6 @@
         xmlns:controls="using:ShareX.AvaloniaUI.Controls"
         xmlns:res="using:ShareX.Localization"
         x:Class="ShareX.ShortenURLWindow"
-        x:CompileBindings="False"
         Title="{x:Static res:Strings.ShortenURLWindow_Title}"
         Width="620"
         SizeToContent="Height"
