@@ -38,6 +38,7 @@ using ShareX.AvaloniaUI.Input;
 using ShareX.AvaloniaUI.Theming;
 using ShareX.HelpersLib;
 using ShareX.ImageEditor.Core.Annotations;
+using ShareX.ImageEditor.Integration;
 using ShareX.ImageEditor.Presentation.Controls;
 using ShareX.ImageEditor.Presentation.ViewModels;
 using ShareX.ImageEditor.Presentation.Views;
@@ -130,6 +131,16 @@ public partial class RegionCaptureWindow : Window
     private bool _closing;
     private Exception? _startupException;
     private double _appliedPixelScaling;
+    // Created ahead of time, shown cloaked (invisible and not hit-testable) until a capture is attached.
+    private bool _prewarmed;
+    private DrawingRectangle _prewarmBounds;
+    // The prewarmed UI has been rendered once and made fully transparent, so showing the window changes no pixel.
+    private bool _prewarmTransparent;
+    // Shown over the live desktop before the screenshot existed (see ShowEarly).
+    private bool _shownEarly;
+    private RegionCaptureOptions? _workspaceModelRegionCaptureOptions;
+    private ImageEditorOptions? _workspaceModelImageEditorOptions;
+    private string? _workspaceModelKey;
 
     public RegionCaptureWindow()
     {
@@ -182,6 +193,160 @@ public partial class RegionCaptureWindow : Window
         Show();
         return _completionSource.Task;
     }
+
+    /// <summary>
+    /// Creates and shows a cloaked capture window for <paramref name="bounds"/>, so that a later capture skips window
+    /// creation, XAML loading, layout and Show(): the hotkey only has to attach the screenshot and uncloak the window.
+    /// </summary>
+    public static RegionCaptureWindow CreatePrewarmed(DrawingRectangle bounds, RegionCapturePrewarmOptions? options = null)
+    {
+        RegionCaptureWindow window = new()
+        {
+            _prewarmed = true,
+            _prewarmBounds = bounds,
+            ShowActivated = false,
+            // Transparent until the capture is attached: if DWM shows the window before the screenshot frame is
+            // presented, that frame is the live desktop (identical to the screenshot), never an empty dark frame.
+            Background = Brushes.Transparent,
+            TransparencyLevelHint = [WindowTransparencyLevel.Transparent]
+        };
+
+        if (options != null)
+        {
+            window.InitializeWorkspaceModel(options.RegionCaptureOptions, options.ImageEditorOptions, options.EnableAnnotations);
+            window.ApplyCaptureOptions(options.RegionCaptureOptions, bounds);
+        }
+
+        window.Opened += window.OnOpened;
+        window.Position = new PixelPoint(bounds.X, bounds.Y);
+        window.ApplyPixelSize(bounds);
+        window.SetCloaked(true);
+        window.Show();
+        return window;
+    }
+
+    /// <summary>Starts a capture in a window created with <see cref="CreatePrewarmed"/>.</summary>
+    public Task<AvaloniaRegionCaptureResult?> CaptureAsync(AvaloniaRegionCaptureRequest request)
+    {
+        if (!_prewarmed || _request != null)
+        {
+            throw new InvalidOperationException("The window is not a prewarmed capture window.");
+        }
+
+        _request = request ?? throw new ArgumentNullException(nameof(request));
+        _imageWidth = Math.Max(1, request.ScreenBounds.Width);
+        _imageHeight = Math.Max(1, request.ScreenBounds.Height);
+
+        if (request.RegionCaptureOptions.ActiveMonitorMode)
+        {
+            Helpers.LockCursorToWindow(this);
+        }
+
+        InitializeCaptureWorkspace();
+
+        if (request.ScreenBounds != _prewarmBounds)
+        {
+            // Monitors changed or active monitor mode: move and resize the window (slower, but rare).
+            Position = new PixelPoint(request.ScreenBounds.X, request.ScreenBounds.Y);
+            ApplyPixelSize();
+        }
+
+        try
+        {
+            PrepareWorkspace();
+        }
+        catch (Exception ex)
+        {
+            // Close so OnClosed releases the workspace and bitmaps and completes the task with this exception.
+            _startupException = ex;
+            CancelCapture();
+            return _completionSource.Task;
+        }
+
+        _ = StartCaptureAsync(uncloakAfterRender: true);
+        return _completionSource.Task;
+    }
+
+    public bool IsPrewarmedAndIdle => _prewarmed && _request == null && !_closing && IsVisible;
+
+    /// <summary>
+    /// Shows the capture overlay (dim layer and toolbars) over the live desktop before the screenshot exists, so it
+    /// appears within a frame or two of the hotkey. The window is excluded from screen capture until the screenshot
+    /// has been taken, and the screenshot (identical to the desktop under it) is shown when the capture is attached.
+    /// </summary>
+    public bool ShowEarly(DrawingRectangle captureBounds)
+    {
+        if (!IsPrewarmedAndIdle || !_prewarmTransparent || captureBounds != _prewarmBounds || !SetExcludedFromCapture(true))
+        {
+            return false;
+        }
+
+        _editorWorkspace.Opacity = 0;
+
+        if (Content is Visual root)
+        {
+            root.Opacity = 1;
+        }
+
+        SetCloaked(false);
+        _shownEarly = true;
+        return true;
+    }
+
+    /// <summary>
+    /// Shows the idle prewarmed window while it is fully transparent: nothing changes on screen, but DWM composes a new
+    /// frame, which the Desktop Duplication capture needs on a static screen.
+    /// </summary>
+    public bool Reveal()
+    {
+        if (!IsPrewarmedAndIdle || !_prewarmTransparent)
+        {
+            return false;
+        }
+
+        SetCloaked(false);
+        return true;
+    }
+
+    /// <summary>Hides an early shown window again when the capture did not start.</summary>
+    public void Conceal()
+    {
+        if (IsPrewarmedAndIdle)
+        {
+            SetCloaked(true);
+
+            if (Content is Visual root)
+            {
+                root.Opacity = 0;
+            }
+
+            _editorWorkspace.Opacity = 1;
+            SetExcludedFromCapture(false);
+            _shownEarly = false;
+        }
+    }
+
+    private bool SetExcludedFromCapture(bool excluded)
+    {
+        IntPtr handle = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+        return handle != IntPtr.Zero && NativeMethods.SetWindowDisplayAffinity(handle, excluded ? WdaExcludeFromCapture : WdaNone);
+    }
+
+    private const uint WdaNone = 0x00;
+    private const uint WdaExcludeFromCapture = 0x11;
+
+    private void SetCloaked(bool cloaked)
+    {
+        IntPtr handle = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+
+        if (handle != IntPtr.Zero)
+        {
+            int value = cloaked ? 1 : 0;
+            NativeMethods.DwmSetWindowAttribute(handle, DwmwaCloak, ref value, sizeof(int));
+        }
+    }
+
+    private const int DwmwaCloak = 13;
 
     protected override void OnClosed(EventArgs e)
     {
@@ -382,7 +547,22 @@ public partial class RegionCaptureWindow : Window
             return;
         }
 
-        _viewModel = new MainViewModel(_request.ImageEditorOptions)
+        if (!WorkspaceModelMatches(_request))
+        {
+            ReleaseWorkspaceModel();
+            InitializeWorkspaceModel(_request.RegionCaptureOptions, _request.ImageEditorOptions, _request.EnableAnnotations);
+        }
+
+        ApplyRequestOptions();
+    }
+
+    /// <summary>
+    /// Creates the editor view model and annotation toolbar. This is the expensive part of the setup (bindings and
+    /// toolbar items), so prewarmed windows do it ahead of time with the options the next capture is expected to use.
+    /// </summary>
+    private void InitializeWorkspaceModel(RegionCaptureOptions regionCaptureOptions, ImageEditorOptions imageEditorOptions, bool enableAnnotations)
+    {
+        _viewModel = new MainViewModel(imageEditorOptions)
         {
             ShowFileMenu = false,
             ShowTaskButtons = false,
@@ -392,8 +572,8 @@ public partial class RegionCaptureWindow : Window
             UseContinueWorkflow = false,
             AllowAutoExpandCanvas = false
         };
-        _viewModel.SetHostToolbarItems(_request.EnableAnnotations
-            ? RegionCaptureToolbar.CreateItems(_request.RegionCaptureOptions.ToolbarItems)
+        _viewModel.SetHostToolbarItems(enableAnnotations
+            ? RegionCaptureToolbar.CreateItems(regionCaptureOptions.ToolbarItems)
             : []);
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _viewModel.ToolSelectionRequested += OnAnnotationToolSelected;
@@ -402,28 +582,84 @@ public partial class RegionCaptureWindow : Window
         _editorWorkspace.DataContext = _viewModel;
         _annotationToolbar.DataContext = _viewModel.ToolbarAdapter;
         _editorWorkspace.AttachHostAnnotationToolbar(_annotationToolbar);
-        _annotationToolbar.IsVisible = _request.EnableAnnotations;
+        _annotationToolbar.IsVisible = enableAnnotations;
         _annotationToolbar.ShowToolOptions = false;
+        _annotationToolbar.IsCompact = regionCaptureOptions.CompactToolbar;
 
-        if (_request.RegionCaptureOptions.CompactToolbar)
+        if (regionCaptureOptions.CompactToolbar)
         {
-            _annotationToolbar.IsCompact = true;
             _annotationToolbar.MainToolbarCornerRadius = new CornerRadius(3);
         }
 
-        _regionInputSurface.Width = _imageWidth;
-        _regionInputSurface.Height = _imageHeight;
-        _regionOverlay.DimAlpha = GetDimAlpha(_request.RegionCaptureOptions);
-        _regionOverlay.DimAllExceptSelection = _request.RegionCaptureOptions.DimAllExceptSelection;
-        _regionOverlay.ShowCenterCrosshair = _request.RegionCaptureOptions.ShowCenterCrosshair;
-        _regionOverlay.ShowCursorCrosshair = _request.RegionCaptureOptions.ShowScreenCrosshair;
-        _cursorScaling = GetInitialScaling();
-        _regionInputSurface.Cursor = CursorAssetLoader.GetCrosshairCursor(_cursorScaling);
-        InitializeRegionResizeNodes();
+        _workspaceModelRegionCaptureOptions = regionCaptureOptions;
+        _workspaceModelImageEditorOptions = imageEditorOptions;
+        _workspaceModelKey = GetWorkspaceModelKey(regionCaptureOptions, enableAnnotations);
+    }
 
-        _magnifierView.IsVisible = IsMagnifierShown;
-        ApplyMagnifierShape();
-        _pointerInfoPanel.IsVisible = _request.RegionCaptureOptions.ShowInfo;
+    private bool WorkspaceModelMatches(AvaloniaRegionCaptureRequest request)
+    {
+        // Same settings objects and unchanged toolbar settings: the prewarmed view model can be used as is.
+        return _viewModel != null &&
+            ReferenceEquals(_workspaceModelRegionCaptureOptions, request.RegionCaptureOptions) &&
+            ReferenceEquals(_workspaceModelImageEditorOptions, request.ImageEditorOptions) &&
+            _workspaceModelKey == GetWorkspaceModelKey(request.RegionCaptureOptions, request.EnableAnnotations);
+    }
+
+    private static string GetWorkspaceModelKey(RegionCaptureOptions options, bool enableAnnotations)
+    {
+        return $"{enableAnnotations}|{options.CompactToolbar}|" + string.Join(";", (options.ToolbarItems ?? []).Select(item =>
+            $"{item.Id},{item.BeginGroup},{item.IsVisible},{item.Hotkey},{item.SecondaryHotkey}"));
+    }
+
+    private void ReleaseWorkspaceModel()
+    {
+        if (_viewModel == null)
+        {
+            return;
+        }
+
+        _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        _viewModel.ToolSelectionRequested -= OnAnnotationToolSelected;
+        _viewModel.HostToolbarItemRequested -= OnHostToolbarItemRequested;
+        _editorWorkspace.DetachHostAnnotationToolbar(_annotationToolbar);
+        _viewModel.Dispose();
+        _viewModel = null;
+        _workspaceModelKey = null;
+    }
+
+    /// <summary>Applies the cheap, per capture settings.</summary>
+    private void ApplyRequestOptions()
+    {
+        if (_request == null || _viewModel == null)
+        {
+            return;
+        }
+
+        ApplyCaptureOptions(_request.RegionCaptureOptions, _request.ScreenBounds);
+    }
+
+    /// <summary>Applies the per capture settings for a capture of <paramref name="bounds"/>.</summary>
+    private void ApplyCaptureOptions(RegionCaptureOptions options, DrawingRectangle bounds)
+    {
+        if (_viewModel == null)
+        {
+            return;
+        }
+
+        _cursorScaling = GetInitialScaling(bounds);
+        _regionInputSurface.Width = Math.Max(1, bounds.Width);
+        _regionInputSurface.Height = Math.Max(1, bounds.Height);
+        _regionOverlay.DimAlpha = GetDimAlpha(options);
+        _regionOverlay.DimAllExceptSelection = options.DimAllExceptSelection;
+        _regionOverlay.ShowCenterCrosshair = options.ShowCenterCrosshair;
+        _regionOverlay.ShowCursorCrosshair = options.ShowScreenCrosshair;
+        _regionInputSurface.Cursor = CursorAssetLoader.GetCrosshairCursor(_cursorScaling);
+        InitializeRegionResizeNodes(_cursorScaling);
+
+        // IsMagnifierShown, with the options passed in: a prewarmed window has no request yet.
+        _magnifierView.IsVisible = options.ShowMagnifier && !_magnifierHiddenByWheel;
+        ApplyMagnifierShape(options);
+        _pointerInfoPanel.IsVisible = options.ShowInfo;
         _magnifierPanel.IsVisible = _magnifierView.IsVisible || _pointerInfoPanel.IsVisible;
         _regionToolButton.Classes.Set("active", true);
         _viewModel.SetHostToolbarToolsActive(false);
@@ -432,12 +668,14 @@ public partial class RegionCaptureWindow : Window
 
     private void ApplyMagnifierShape()
     {
-        if (_request == null)
+        if (_request != null)
         {
-            return;
+            ApplyMagnifierShape(_request.RegionCaptureOptions);
         }
+    }
 
-        RegionCaptureOptions options = _request.RegionCaptureOptions;
+    private void ApplyMagnifierShape(RegionCaptureOptions options)
+    {
         int magnifierSize = Math.Clamp(options.MagnifierSize,
             RegionCaptureOptions.MagnifierSizeMinimum,
             RegionCaptureOptions.MagnifierSizeMaximum);
@@ -475,9 +713,13 @@ public partial class RegionCaptureWindow : Window
             : new EllipseGeometry(new Rect(0, 0, magnifierSize, magnifierSize));
     }
 
-    private void InitializeRegionResizeNodes()
+    private void InitializeRegionResizeNodes(double scaling)
     {
-        double scaling = GetInitialScaling();
+        if (_regionResizeNodes.Count > 0)
+        {
+            return;
+        }
+
         foreach (SelectionResizeNodeKind node in SelectionResizeNode.RectangleNodes)
         {
             Border control = SelectionResizeNode.Create(
@@ -560,6 +802,31 @@ public partial class RegionCaptureWindow : Window
 
     private async void OnOpened(object? sender, EventArgs e)
     {
+        if (_prewarmed && _request == null)
+        {
+            // Shown cloaked ahead of time; the capture starts in CaptureAsync(request).
+            ApplyPixelSize(_prewarmBounds);
+            _editorWorkspace.ConfigureForFullscreenWorkspace();
+            _editorWorkspace.PrepareWorkspaceCanvas(_prewarmBounds.Width, _prewarmBounds.Height);
+
+            // Render the UI once while cloaked so its drawing operations, text and resources are ready, then make it
+            // transparent: the last frame of the cloaked window is then see-through, not an empty dark workspace.
+            RequestAnimationFrame(_ => RequestAnimationFrame(_ =>
+            {
+                if (_request == null && Content is Visual root)
+                {
+                    root.Opacity = 0;
+                    _prewarmTransparent = ActualTransparencyLevel == WindowTransparencyLevel.Transparent;
+                }
+            }));
+            return;
+        }
+
+        await StartCaptureAsync(uncloakAfterRender: false);
+    }
+
+    private async Task StartCaptureAsync(bool uncloakAfterRender)
+    {
         try
         {
             if (_request == null || _viewModel == null)
@@ -580,9 +847,51 @@ public partial class RegionCaptureWindow : Window
                 ActivateRegionTool();
             }
 
-            Activate();
-            Focus();
-            _regionInputSurface.Focus();
+            if (uncloakAfterRender && ActualTransparencyLevel == WindowTransparencyLevel.Transparent)
+            {
+                // The prewarmed window is transparent, so it can be shown right away: until the next frame is
+                // presented with the screenshot, the user sees the live desktop through it.
+                if (Content is Visual root)
+                {
+                    root.Opacity = 1;
+                }
+
+                _editorWorkspace.Opacity = 1;
+
+                if (_shownEarly)
+                {
+                    // The screenshot has been taken: screen recorders and sharing see the overlay again.
+                    SetExcludedFromCapture(false);
+                }
+
+                SetCloaked(false);
+                Activate();
+                Focus();
+                _regionInputSurface.Focus();
+            }
+            else if (uncloakAfterRender)
+            {
+                if (Content is Visual root)
+                {
+                    root.Opacity = 1;
+                }
+
+                // No transparency: uncloak after the frame that rendered the screenshot has been committed, so the
+                // empty prewarmed frame is never visible.
+                _editorWorkspace.InvokeWhenWorkspaceRendered(() => RequestAnimationFrame(_ =>
+                {
+                    SetCloaked(false);
+                    Activate();
+                    Focus();
+                    _regionInputSurface.Focus();
+                }), TimeSpan.FromMilliseconds(500));
+            }
+            else
+            {
+                Activate();
+                Focus();
+                _regionInputSurface.Focus();
+            }
 
             DrawingPoint cursorPosition = CaptureHelpers.GetCursorPosition();
             _lastPointerPoint = ClampPoint(new Point(
@@ -2452,9 +2761,14 @@ public partial class RegionCaptureWindow : Window
             return;
         }
 
+        ApplyPixelSize(_request.ScreenBounds);
+    }
+
+    private void ApplyPixelSize(DrawingRectangle bounds)
+    {
         double scaling = double.IsFinite(RenderScaling) && RenderScaling > 0 ? RenderScaling : 1;
-        Width = _request.ScreenBounds.Width / scaling;
-        Height = _request.ScreenBounds.Height / scaling;
+        Width = bounds.Width / scaling;
+        Height = bounds.Height / scaling;
     }
 
     private double GetRenderScaling() => double.IsFinite(RenderScaling) && RenderScaling > 0 ? RenderScaling : 1;
@@ -2480,12 +2794,12 @@ public partial class RegionCaptureWindow : Window
 
     private double GetInitialScaling()
     {
-        if (_request == null)
-        {
-            return 1;
-        }
+        return _request == null ? 1 : GetInitialScaling(_request.ScreenBounds);
+    }
 
-        PixelPoint topLeft = new PixelPoint(_request.ScreenBounds.X, _request.ScreenBounds.Y);
+    private double GetInitialScaling(DrawingRectangle bounds)
+    {
+        PixelPoint topLeft = new PixelPoint(bounds.X, bounds.Y);
         return Screens.ScreenFromPoint(topLeft)?.Scaling ?? Screens.Primary?.Scaling ?? 1;
     }
 

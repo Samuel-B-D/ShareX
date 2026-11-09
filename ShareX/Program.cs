@@ -121,6 +121,16 @@ internal static class Program
     private static async Task StartApplicationAsync()
     {
         ImageEditorIntegration.Initialize();
+        // Create the Direct3D devices used by the fast screen capture path off the UI thread.
+        ShareX.ScreenCaptureLib.Screenshot.WarmupFastCapture();
+        // Region capture window shown cloaked ahead of time, so the overlay appears immediately on the hotkey.
+        ShareX.ScreenCaptureLib.Presentation.RegionCapture.RegionCaptureIntegration.PrepareWindow(() =>
+            ApplicationState.DefaultTaskSettings is TaskSettings settings
+                ? new ShareX.ScreenCaptureLib.Presentation.RegionCapture.RegionCapturePrewarmOptions(
+                    settings.CaptureSettings.RegionCaptureOptions,
+                    settings.ToolsSettings.ImageEditorOptions,
+                    !settings.AdvancedSettings.RegionCaptureDisableAnnotation)
+                : null);
 
         if (ApplicationState.Settings.ShowStartScreen)
         {

@@ -40,6 +40,18 @@ namespace ShareX.ScreenCaptureLib
         public bool AutoHideTaskbar { get; set; } = false;
         public bool HDRScreenshotColorCorrection { get; set; } = false;
 
+        /// <summary>
+        /// Called by the Desktop Duplication capture after the duplications exist and before waiting for a frame. Use it
+        /// to make DWM compose a frame without changing any pixel (see DesktopDuplicationCapture).
+        /// </summary>
+        public Action BeforeDesktopFrameAcquire { get; set; }
+
+        /// <summary>Prepares the Desktop Duplication capture path in the background (see DesktopDuplicationCapture).</summary>
+        public static void WarmupFastCapture()
+        {
+            DesktopDuplicationCapture.Warmup();
+        }
+
         public Bitmap CaptureRectangle(Rectangle rect)
         {
             if (RemoveOutsideScreenArea)
@@ -150,6 +162,17 @@ namespace ShareX.ScreenCaptureLib
                 }
 
                 return bitmap;
+            }
+
+            if (!captureCursor && handle == NativeMethods.GetDesktopWindow())
+            {
+                // Desktop Duplication is an order of magnitude faster than BitBlt; GDI stays the fallback.
+                Bitmap duplicated = DesktopDuplicationCapture.TryCapture(rect, BeforeDesktopFrameAcquire);
+
+                if (duplicated != null)
+                {
+                    return duplicated;
+                }
             }
 
             return CaptureRectangleGDI(handle, rect, captureCursor);

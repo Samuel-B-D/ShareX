@@ -45,6 +45,10 @@ public class SKCanvasControl : Control, IDisposable
     private WriteableBitmap? _bitmap;
     private DirectSource? _direct;
     private object _lock = new object();
+    private bool _hasContent;
+
+    /// <summary>Raised after Render has drawn content written with <see cref="Draw"/>.</summary>
+    public event EventHandler? ContentRendered;
 
     /// <summary>True while a bitmap is shown by <see cref="ShowDirectly"/> instead of the backing store.</summary>
     public bool HasDirectSource => _direct != null;
@@ -140,6 +144,11 @@ public class SKCanvasControl : Control, IDisposable
             // transient stale bounds causes freshly resized images (crop/cut/undo) to be
             // painted into the previous canvas size until layout catches up.
             context.DrawImage(_bitmap, new Rect(0, 0, _bitmap.PixelSize.Width, _bitmap.PixelSize.Height));
+
+            if (_hasContent)
+            {
+                ContentRendered?.Invoke(this, EventArgs.Empty);
+            }
         }
     }
 
@@ -165,6 +174,7 @@ public class SKCanvasControl : Control, IDisposable
                     if (surface != null)
                     {
                         drawAction(surface.Canvas);
+                        _hasContent = true;
                     }
                 }
             }

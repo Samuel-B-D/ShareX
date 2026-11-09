@@ -47,7 +47,7 @@
         </Style>
     </Window.Styles>
 
-    <Grid x:Name="RootGrid" Background="Black">
+    <Grid x:Name="RootGrid">
         <!-- The shared editor workspace owns the frozen screenshot and annotations. -->
         <views:EditorView x:Name="EditorWorkspace"/>
 

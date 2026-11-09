@@ -55,24 +55,46 @@ namespace ShareX
                 ? CaptureHelpers.GetActiveScreenBounds()
                 : CaptureHelpers.GetScreenBounds();
 
-            // The capture is already a new bitmap owned by this request, so it is handed over without a copy.
-            SKBitmap frozenScreenshot = activeMonitorMode
-                ? screenshot.CaptureActiveMonitor()
-                : screenshot.CaptureFullscreen();
+            // Shows the prewarmed overlay over the live desktop while the screenshot is taken (it is excluded from
+            // capture), which also makes DWM compose the frame the fast capture path waits for.
+            screenshot.BeforeDesktopFrameAcquire = () => RegionCaptureIntegration.ShowPrewarmedOverlay(screenBounds);
 
+            // The capture is a new bitmap owned by the request, no extra copy needed.
+            SKBitmap frozenScreenshot = null;
             SKBitmap cursorBitmap = null;
             Point cursorPosition = Point.Empty;
 
-            if (taskSettings.CaptureSettings.ShowCursor)
+            try
             {
-                CursorData cursorData = new CursorData();
-                if (cursorData.IsVisible)
+                frozenScreenshot = activeMonitorMode
+                    ? screenshot.CaptureActiveMonitor()
+                    : screenshot.CaptureFullscreen();
+
+                if (frozenScreenshot == null)
                 {
-                    cursorBitmap = cursorData.ToBitmap(frozenScreenshot, screenBounds.Location);
-                    cursorPosition = new Point(
-                        cursorData.DrawPosition.X - screenBounds.X,
-                        cursorData.DrawPosition.Y - screenBounds.Y);
+                    RegionCaptureIntegration.ConcealPrewarmedWindow();
+                    return null;
                 }
+
+                if (taskSettings.CaptureSettings.ShowCursor)
+                {
+                    CursorData cursorData = new CursorData();
+                    if (cursorData.IsVisible)
+                    {
+                        cursorBitmap = cursorData.ToBitmap(frozenScreenshot, screenBounds.Location);
+                        cursorPosition = new Point(
+                            cursorData.DrawPosition.X - screenBounds.X,
+                            cursorData.DrawPosition.Y - screenBounds.Y);
+                    }
+                }
+            }
+            catch
+            {
+                // The overlay may already be shown over the live desktop; never leave it on screen without a capture.
+                RegionCaptureIntegration.ConcealPrewarmedWindow();
+                frozenScreenshot?.Dispose();
+                cursorBitmap?.Dispose();
+                throw;
             }
 
             AvaloniaRegionCaptureRequest request = new AvaloniaRegionCaptureRequest

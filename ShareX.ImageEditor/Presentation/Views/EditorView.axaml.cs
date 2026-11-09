@@ -955,6 +955,41 @@ namespace ShareX.ImageEditor.Presentation.Views
             }
         }
 
+        /// <summary>Allocates the workspace canvas for an image of this size ahead of time (prewarmed capture windows).</summary>
+        public void PrepareWorkspaceCanvas(int width, int height)
+        {
+            _canvasControl?.Initialize(width, height);
+        }
+
+        /// <summary>
+        /// Runs <paramref name="action"/> once the canvas has rendered a frame containing the workspace image
+        /// (or after <paramref name="timeout"/>, so a host waiting to show itself never stays hidden).
+        /// </summary>
+        public void InvokeWhenWorkspaceRendered(Action action, TimeSpan timeout)
+        {
+            if (_canvasControl == null)
+            {
+                action();
+                return;
+            }
+
+            SKCanvasControl canvas = _canvasControl;
+            bool done = false;
+            EventHandler? handler = null;
+
+            void Run()
+            {
+                if (done) return;
+                done = true;
+                canvas.ContentRendered -= handler;
+                action();
+            }
+
+            handler = (_, _) => Run();
+            canvas.ContentRendered += handler;
+            DispatcherTimer.RunOnce(Run, timeout);
+        }
+
         /// <summary>
         /// Loads an owned bitmap directly into the shared workspace without creating the
         /// normal editor preview and backup copies. This is intended for very large,
@@ -999,6 +1034,10 @@ namespace ShareX.ImageEditor.Presentation.Views
                 vm.Zoom = 1.0;
                 vm.IsDirty = false;
             }
+
+            // Draw now instead of through the posted ImageChanged/RenderCore round trips, so the capture background
+            // is in the very next rendered frame.
+            RenderCore();
         }
 
         /// <summary>Reads a pixel from the live raster owned by an embedded workspace.</summary>

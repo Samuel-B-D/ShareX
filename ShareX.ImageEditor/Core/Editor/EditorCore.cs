@@ -1524,7 +1524,15 @@ public class EditorCore : IDisposable
     /// <param name="canvas">Target canvas</param>
     public void Render(SKCanvas canvas)
     {
-        canvas.Clear(SKColors.Transparent);
+        // An opaque image covering the whole canvas overwrites every pixel, so clearing first is wasted work
+        // (a full screen region capture background).
+        bool coversCanvas = SourceImage != null && SourceImage.AlphaType == SKAlphaType.Opaque &&
+            SourceImage.Width >= CanvasSize.Width && SourceImage.Height >= CanvasSize.Height;
+
+        if (!coversCanvas)
+        {
+            canvas.Clear(SKColors.Transparent);
+        }
 
         // Draw source image only — annotations are handled by Avalonia controls
         if (SourceImage != null)
