@@ -90,9 +90,9 @@ namespace ShareX
                 ? CaptureHelpers.GetActiveScreenBounds()
                 : CaptureHelpers.GetScreenBounds();
 
-            // Shows the prewarmed overlay over the live desktop while the screenshot is taken (it is excluded from
-            // capture), which also makes DWM compose the frame the fast capture path waits for.
-            screenshot.BeforeDesktopFrameAcquire = () => RegionCaptureIntegration.ShowPrewarmedOverlay(screenBounds);
+            // Nothing is shown before the screenshot is taken: a window appearing over other applications (even one
+            // excluded from capture) changes the window under the mouse, and their popups, menus, tooltips and hover
+            // previews close before the frame is composed.
 
             // The capture is a new bitmap owned by the request, no extra copy needed.
             SKBitmap frozenScreenshot = null;
@@ -112,6 +112,9 @@ namespace ShareX
                     RegionCaptureIntegration.ConcealPrewarmedWindow();
                     return null;
                 }
+
+                // The screenshot exists: show the overlay right away, before the capture is attached to it.
+                RegionCaptureIntegration.ShowPrewarmedOverlay(screenBounds);
 
                 if (taskSettings.CaptureSettings.ShowCursor)
                 {

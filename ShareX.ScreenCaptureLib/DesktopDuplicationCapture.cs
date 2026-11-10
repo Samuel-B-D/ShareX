@@ -46,8 +46,9 @@ namespace ShareX.ScreenCaptureLib
     /// 30-90 ms for a GDI BitBlt with CAPTUREBLT and its bitmap conversions.
     /// <para>
     /// A new duplication only delivers a usable image once DWM composes a frame. On a static screen nothing is
-    /// composed, so the caller can trigger a composition that does not change any pixel (showing a fully transparent
-    /// window) through the <c>beforeAcquire</c> callback, which runs after the duplications exist.
+    /// composed, so a composition is triggered with <see cref="CompositionTrigger"/>, which changes nothing other
+    /// applications can see or react to. The optional <c>beforeAcquire</c> callback runs after the duplications exist;
+    /// anything it changes on screen can be in the frame, so it must not show windows over other applications.
     /// </para>
     /// Returns null when the duplication cannot be used (rotated or HDR outputs, secure desktop, device lost, no frame
     /// in time, ...) so the caller falls back to GDI.
@@ -169,6 +170,12 @@ namespace ShareX.ScreenCaptureLib
                     {
                         capture.Duplication = capture.Output.Output.DuplicateOutput(capture.Adapter.Device);
                     }
+
+                    // Make DWM compose each monitor now, without any visible change, so the frame is the desktop as it
+                    // is at this moment (even on a static screen) and nothing on screen reacts before it is taken.
+                    List<Rectangle> monitors = new List<Rectangle>(captures.Count);
+                    foreach (OutputCapture capture in captures) monitors.Add(capture.Output.Bounds);
+                    CompositionTrigger.Trigger(monitors);
 
                     try
                     {

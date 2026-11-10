@@ -261,10 +261,10 @@ public static class RegionCaptureIntegration
     }
 
     /// <summary>
-    /// Shows the prewarmed overlay for <paramref name="captureBounds"/> before the screenshot is taken: the dim layer
-    /// and toolbars appear over the live desktop right away (the window is excluded from capture until the screenshot
-    /// exists). When the bounds differ, the window is only shown fully transparent. Either way DWM composes a frame,
-    /// which the Desktop Duplication capture needs. Use it as Screenshot.BeforeDesktopFrameAcquire.
+    /// Shows the prewarmed overlay for <paramref name="captureBounds"/> as soon as the screenshot has been taken, before
+    /// the capture is attached to it: the dim layer and toolbars appear over the live desktop (identical to the
+    /// screenshot) right away. Never call it before the screenshot: a window appearing over other applications closes
+    /// their popups, menus and tooltips before the frame is composed.
     /// </summary>
     public static void ShowPrewarmedOverlay(Rectangle captureBounds)
     {
@@ -275,10 +275,7 @@ public static class RegionCaptureIntegration
                 return;
             }
 
-            if (_prewarmedWindow != null && !_prewarmedWindow.ShowEarly(captureBounds))
-            {
-                _prewarmedWindow.Reveal();
-            }
+            _prewarmedWindow?.ShowEarly(captureBounds);
         }
 
         if (Dispatcher.UIThread.CheckAccess())
