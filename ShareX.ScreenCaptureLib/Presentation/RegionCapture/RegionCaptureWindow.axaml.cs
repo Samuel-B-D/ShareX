@@ -337,6 +337,20 @@ public partial class RegionCaptureWindow : Window
 
         _editorWorkspace.Opacity = 0;
 
+        // No screenshot to magnify yet, and the panel is not next to the pointer: UpdateHud shows and places it when
+        // the capture is attached.
+        _magnifierPanel.IsVisible = false;
+        _selectionInfoPanel.IsVisible = false;
+
+        // The toolbar has never been placed in a prewarmed window (it sits at the top left corner of the window): put
+        // it where the capture will have it (StartCaptureAsync places it again, at the same spot) before it is seen.
+        if (_workspaceModelRegionCaptureOptions != null)
+        {
+            DrawingPoint cursorPosition = CaptureHelpers.GetCursorPosition();
+            UpdateToolbarPosition(new PixelPoint(cursorPosition.X, cursorPosition.Y), _workspaceModelRegionCaptureOptions,
+                _prewarmBounds);
+        }
+
         if (Content is Visual root)
         {
             root.Opacity = 1;
@@ -724,7 +738,10 @@ public partial class RegionCaptureWindow : Window
         _magnifierView.IsVisible = options.ShowMagnifier && !_magnifierHiddenByWheel;
         ApplyMagnifierShape(options);
         _pointerInfoPanel.IsVisible = options.ShowInfo;
-        _magnifierPanel.IsVisible = _magnifierView.IsVisible || _pointerInfoPanel.IsVisible;
+
+        // Shown by UpdateHud, which places it next to the pointer in the same frame. Visible before that, it would be
+        // drawn for a frame at its previous position (the top left corner on a new window).
+        _magnifierPanel.IsVisible = false;
         _regionToolButton.Classes.Set("active", true);
         _viewModel.SetHostToolbarToolsActive(false);
         Title = Localization.Strings.BaseRegionForm_InitializeComponent_Region_capture;
@@ -1499,16 +1516,21 @@ public partial class RegionCaptureWindow : Window
             return;
         }
 
+        UpdateToolbarPosition(desktopPoint, _request.RegionCaptureOptions, _request.ScreenBounds);
+    }
+
+    private void UpdateToolbarPosition(PixelPoint desktopPoint, RegionCaptureOptions options, DrawingRectangle captureBounds)
+    {
         double scale = GetToolbarScale();
-        DrawingPoint saved = _request.RegionCaptureOptions.ToolbarPosition;
+        DrawingPoint saved = options.ToolbarPosition;
         if (!saved.IsEmpty)
         {
             PixelPoint savedPoint = new(saved.X, saved.Y);
             if (Screens.All.Any(screen => screen.Bounds.Contains(savedPoint)))
             {
                 SetCaptureToolbarAnchor(
-                    (saved.X - _request.ScreenBounds.X) / scale,
-                    (saved.Y - _request.ScreenBounds.Y) / scale);
+                    (saved.X - captureBounds.X) / scale,
+                    (saved.Y - captureBounds.Y) / scale);
                 return;
             }
         }
@@ -1520,8 +1542,8 @@ public partial class RegionCaptureWindow : Window
         }
 
         _captureToolbarScreenBounds = screen.Bounds;
-        double monitorCenterX = screen.Bounds.X - _request.ScreenBounds.X + screen.Bounds.Width / 2d;
-        double monitorTop = screen.Bounds.Y - _request.ScreenBounds.Y;
+        double monitorCenterX = screen.Bounds.X - captureBounds.X + screen.Bounds.Width / 2d;
+        double monitorTop = screen.Bounds.Y - captureBounds.Y;
         SetCaptureToolbarAnchor(monitorCenterX / scale, monitorTop / scale);
     }
 
@@ -1592,12 +1614,14 @@ public partial class RegionCaptureWindow : Window
         _captureToolbarTop = top;
         _positionedCaptureToolbarSize = default;
 
-        if (_request != null)
+        // A prewarmed window shown early has no request yet: its toolbar already gets the scale of its monitor.
+        if (_request != null || _prewarmed)
         {
+            DrawingRectangle bounds = _request?.ScreenBounds ?? _prewarmBounds;
             double scaling = GetWindowScaling();
             _captureToolbarMonitorScale = GetMonitorScaleFactor(new PixelPoint(
-                _request.ScreenBounds.X + (int)Math.Floor(centerX * scaling),
-                _request.ScreenBounds.Y + (int)Math.Floor(top * scaling)));
+                bounds.X + (int)Math.Floor(centerX * scaling),
+                bounds.Y + (int)Math.Floor(top * scaling)));
             ApplyCaptureToolbarScale();
         }
 
@@ -1616,7 +1640,10 @@ public partial class RegionCaptureWindow : Window
     /// </summary>
     private void UpdateCaptureToolbarScale()
     {
-        if (_request == null || !_request.RegionCaptureOptions.UseCustomToolbarButtonSize)
+        // A prewarmed window scales its toolbar with the options it was prepared with, so the toolbar shown early
+        // already has its final size.
+        RegionCaptureOptions? options = _request?.RegionCaptureOptions ?? _workspaceModelRegionCaptureOptions;
+        if (options == null || !options.UseCustomToolbarButtonSize)
         {
             return;
         }
@@ -1627,7 +1654,7 @@ public partial class RegionCaptureWindow : Window
             return;
         }
 
-        int buttonSize = Math.Clamp(_request.RegionCaptureOptions.ToolbarButtonSize,
+        int buttonSize = Math.Clamp(options.ToolbarButtonSize,
             RegionCaptureOptions.ToolbarButtonSizeMinimum, RegionCaptureOptions.ToolbarButtonSizeMaximum);
         _captureToolbarScaleFactor = buttonSize / buttonHeight;
         ApplyCaptureToolbarScale();
