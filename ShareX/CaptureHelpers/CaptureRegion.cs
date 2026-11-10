@@ -85,6 +85,12 @@ namespace ShareX
             Screenshot screenshot = TaskHelpers.GetScreenshot(taskSettings);
             screenshot.CaptureCursor = false;
 
+            // Without a screenshot delay this runs right after the hotkey: the desktop as it was when its modifier was
+            // pressed (before Alt closed menus and popups) is the screenshot.
+            // (Not when desktop icons are hidden for the capture: the frame still shows them.)
+            screenshot.UseHotkeyFrame = taskSettings.CaptureSettings.ScreenshotDelay <= 0 &&
+                !taskSettings.CaptureSettings.CaptureAutoHideDesktopIcons;
+
             bool activeMonitorMode = taskSettings.CaptureSettings.RegionCaptureOptions.ActiveMonitorMode;
             Rectangle screenBounds = activeMonitorMode
                 ? CaptureHelpers.GetActiveScreenBounds()

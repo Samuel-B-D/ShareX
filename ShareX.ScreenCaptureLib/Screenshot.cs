@@ -46,6 +46,12 @@ namespace ShareX.ScreenCaptureLib
         /// </summary>
         public Action BeforeDesktopFrameAcquire { get; set; }
 
+        /// <summary>
+        /// The screenshot may be the frame the keyboard guard took when the modifier of the capture hotkey was pressed
+        /// (Alt closes menus and popups before the hotkey). Only for a capture that runs right after its hotkey.
+        /// </summary>
+        public bool UseHotkeyFrame { get; set; }
+
         /// <summary>Prepares the Desktop Duplication capture path in the background (see DesktopDuplicationCapture).</summary>
         public static void WarmupFastCapture()
         {
@@ -167,7 +173,7 @@ namespace ShareX.ScreenCaptureLib
             if (!captureCursor && handle == NativeMethods.GetDesktopWindow())
             {
                 // Desktop Duplication is an order of magnitude faster than BitBlt; GDI stays the fallback.
-                Bitmap duplicated = DesktopDuplicationCapture.TryCapture(rect, BeforeDesktopFrameAcquire);
+                Bitmap duplicated = DesktopDuplicationCapture.TryCapture(rect, BeforeDesktopFrameAcquire, UseHotkeyFrame);
 
                 if (duplicated != null)
                 {

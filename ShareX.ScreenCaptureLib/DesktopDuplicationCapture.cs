@@ -32,6 +32,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Vortice.Direct3D;
 using Vortice.Direct3D11;
@@ -50,14 +51,27 @@ namespace ShareX.ScreenCaptureLib
     /// applications can see or react to. The optional <c>beforeAcquire</c> callback runs after the duplications exist;
     /// anything it changes on screen can be in the frame, so it must not show windows over other applications.
     /// </para>
+    /// <para>
+    /// <see cref="Precapture"/> takes a frame of every output ahead of time (when the modifier of a capture hotkey is
+    /// pressed, before the foreground application sees the key: Alt closes menus and popups) and keeps it in the staging
+    /// textures. A capture that is allowed to use it and finds it claimed (<see cref="ClaimPrecapture"/>) and recent
+    /// returns that frame instead of a new one.
+    /// </para>
     /// Returns null when the duplication cannot be used (rotated or HDR outputs, secure desktop, device lost, no frame
     /// in time, ...) so the caller falls back to GDI.
     /// </summary>
     internal static class DesktopDuplicationCapture
     {
         private const int FrameWaitMilliseconds = 100;
+        private const int PrecaptureNone = 0, PrecaptureTaken = 1, PrecaptureClaimed = 2;
+        private static readonly long PrecaptureMaxAge = Stopwatch.Frequency * 3;
 
         private static readonly object sync = new object();
+
+        // PrecaptureTaken or PrecaptureClaimed: the staging texture of each output marked Precaptured holds the whole
+        // output as it was at precaptureTimestamp. Changed without sync, so the hook thread never waits for it.
+        private static int precaptureState;
+        private static long precaptureTimestamp;
         private static List<AdapterState> adapters;
         private static bool displaySettingsHooked;
 
@@ -81,6 +95,7 @@ namespace ShareX.ScreenCaptureLib
             public Rectangle Bounds;
             public ModeRotation Rotation;
             public ID3D11Texture2D Staging;
+            public bool Precaptured;
 
             public void Dispose()
             {
@@ -121,7 +136,12 @@ namespace ShareX.ScreenCaptureLib
             });
         }
 
-        public static SKBitmap TryCapture(Rectangle rectangle, Action beforeAcquire = null)
+        /// <summary>
+        /// Captures <paramref name="rectangle"/> (screen pixels). With <paramref name="usePrecapture"/>, a claimed and
+        /// recent frame taken by <see cref="Precapture"/> is returned instead of a new one. Any capture drops the
+        /// precaptured frame.
+        /// </summary>
+        public static SKBitmap TryCapture(Rectangle rectangle, Action beforeAcquire = null, bool usePrecapture = false)
         {
             if (rectangle.Width <= 0 || rectangle.Height <= 0)
             {
@@ -132,6 +152,7 @@ namespace ShareX.ScreenCaptureLib
             {
                 List<OutputCapture> captures = new List<OutputCapture>();
                 SKBitmap bitmap = null;
+                int precapture = Interlocked.Exchange(ref precaptureState, PrecaptureNone);
 
                 try
                 {
@@ -165,6 +186,24 @@ namespace ShareX.ScreenCaptureLib
                         return null;
                     }
 
+                    if (usePrecapture && precapture == PrecaptureClaimed &&
+                        Stopwatch.GetTimestamp() - precaptureTimestamp <= PrecaptureMaxAge &&
+                        captures.TrueForAll(x => x.Output.Precaptured))
+                    {
+                        bitmap = CreateBitmap(rectangle, covered);
+
+                        foreach (OutputCapture capture in captures)
+                        {
+                            CopyFromStaging(capture, rectangle, bitmap);
+                        }
+
+                        DebugHelper.WriteLine("Screen capture: used the frame taken when the hotkey modifier was pressed.");
+                        return bitmap;
+                    }
+
+                    // The staging textures are written below: the precaptured frame is gone.
+                    ClearPrecapturedOutputs();
+
                     // Duplicate every output first: only frames composed after this point are delivered.
                     foreach (OutputCapture capture in captures)
                     {
@@ -186,24 +225,19 @@ namespace ShareX.ScreenCaptureLib
                         DebugHelper.WriteException(e, "Desktop duplication pre-acquire callback failed.");
                     }
 
-                    // Opaque: every pixel gets alpha 255, which lets Skia copy the screenshot instead of blending it.
-                    bitmap = new SKBitmap(new SKImageInfo(rectangle.Width, rectangle.Height, SKColorType.Bgra8888, SKAlphaType.Opaque));
-
-                    if (covered < (long)rectangle.Width * rectangle.Height)
-                    {
-                        // Parts of the rectangle are outside every monitor (gaps in the virtual screen); GDI returns black.
-                        bitmap.Erase(SKColors.Black);
-                    }
+                    bitmap = CreateBitmap(rectangle, covered);
 
                     long deadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency * FrameWaitMilliseconds / 1000;
 
                     foreach (OutputCapture capture in captures)
                     {
-                        if (!CaptureOutput(capture, rectangle, bitmap, deadline))
+                        if (!AcquireToStaging(capture, deadline))
                         {
                             bitmap.Dispose();
                             return null;
                         }
+
+                        CopyFromStaging(capture, rectangle, bitmap);
                     }
 
                     return bitmap;
@@ -222,7 +256,138 @@ namespace ShareX.ScreenCaptureLib
             }
         }
 
-        private static unsafe bool CaptureOutput(OutputCapture capture, Rectangle rectangle, SKBitmap bitmap, long deadline)
+        /// <summary>
+        /// Takes a frame of every output into the staging textures, waiting at most <paramref name="timeoutMilliseconds"/>
+        /// for DWM to compose it, for a capture that starts right after (see <see cref="ClaimPrecapture"/>). Called by the
+        /// keyboard hook before the key reaches the foreground application. Never waits for another capture or creates the
+        /// Direct3D devices (see <see cref="Warmup"/>): it gives up instead.
+        /// </summary>
+        internal static bool Precapture(int timeoutMilliseconds)
+        {
+            if (!Monitor.TryEnter(sync))
+            {
+                return false;
+            }
+
+            List<OutputCapture> captures = new List<OutputCapture>();
+
+            try
+            {
+                Interlocked.Exchange(ref precaptureState, PrecaptureNone);
+                ClearPrecapturedOutputs();
+
+                if (adapters == null)
+                {
+                    return false;
+                }
+
+                foreach (AdapterState adapter in adapters)
+                {
+                    foreach (OutputState output in adapter.Outputs)
+                    {
+                        if (output.Rotation == ModeRotation.Identity || output.Rotation == ModeRotation.Unspecified)
+                        {
+                            captures.Add(new OutputCapture { Adapter = adapter, Output = output, Intersection = output.Bounds });
+                        }
+                    }
+                }
+
+                if (captures.Count == 0)
+                {
+                    return false;
+                }
+
+                foreach (OutputCapture capture in captures)
+                {
+                    capture.Duplication = capture.Output.Output.DuplicateOutput(capture.Adapter.Device);
+                }
+
+                List<Rectangle> monitors = new List<Rectangle>(captures.Count);
+                foreach (OutputCapture capture in captures) monitors.Add(capture.Output.Bounds);
+                CompositionTrigger.Trigger(monitors);
+
+                long deadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency * timeoutMilliseconds / 1000;
+
+                foreach (OutputCapture capture in captures)
+                {
+                    if (!AcquireToStaging(capture, deadline))
+                    {
+                        ClearPrecapturedOutputs();
+                        return false;
+                    }
+
+                    capture.Output.Precaptured = true;
+                }
+
+                precaptureTimestamp = Stopwatch.GetTimestamp();
+                Volatile.Write(ref precaptureState, PrecaptureTaken);
+                return true;
+            }
+            catch (Exception e)
+            {
+                DebugHelper.WriteException(e, "Desktop duplication precapture failed.");
+                ClearPrecapturedOutputs();
+                Reset();
+                return false;
+            }
+            finally
+            {
+                foreach (OutputCapture capture in captures) capture.Dispose();
+                Monitor.Exit(sync);
+            }
+        }
+
+        /// <summary>The capture hotkey was pressed: the precaptured frame, if any, is for the capture it starts.</summary>
+        internal static void ClaimPrecapture()
+        {
+            Interlocked.CompareExchange(ref precaptureState, PrecaptureClaimed, PrecaptureTaken);
+        }
+
+        /// <summary>Something happened after the precapture that was not the capture hotkey (another key, modifier released).</summary>
+        internal static void DiscardUnclaimedPrecapture()
+        {
+            Interlocked.CompareExchange(ref precaptureState, PrecaptureNone, PrecaptureTaken);
+        }
+
+        /// <summary>No capture will use the precaptured frame.</summary>
+        internal static void DiscardPrecapture()
+        {
+            Interlocked.Exchange(ref precaptureState, PrecaptureNone);
+        }
+
+        // Under sync.
+        private static void ClearPrecapturedOutputs()
+        {
+            if (adapters == null)
+            {
+                return;
+            }
+
+            foreach (AdapterState adapter in adapters)
+            {
+                foreach (OutputState output in adapter.Outputs) output.Precaptured = false;
+            }
+        }
+
+        private static SKBitmap CreateBitmap(Rectangle rectangle, long covered)
+        {
+            // Opaque: every pixel gets alpha 255, which lets Skia copy the screenshot instead of blending it.
+            SKBitmap bitmap = new SKBitmap(new SKImageInfo(rectangle.Width, rectangle.Height, SKColorType.Bgra8888, SKAlphaType.Opaque));
+
+            if (covered < (long)rectangle.Width * rectangle.Height)
+            {
+                // Parts of the rectangle are outside every monitor (gaps in the virtual screen); GDI returns black.
+                bitmap.Erase(SKColors.Black);
+            }
+
+            return bitmap;
+        }
+
+        /// <summary>
+        /// Acquires the next composed frame of the output and copies its <see cref="OutputCapture.Intersection"/> into the
+        /// staging texture, at the same position.
+        /// </summary>
+        private static unsafe bool AcquireToStaging(OutputCapture capture, long deadline)
         {
             AdapterState adapter = capture.Adapter;
             OutputState output = capture.Output;
@@ -260,41 +425,66 @@ namespace ShareX.ScreenCaptureLib
                     capture.Duplication.ReleaseFrame();
                 }
 
+                if (frameInfo.LastPresentTime != 0)
+                {
+                    return true;
+                }
+
                 MappedSubresource mapped = adapter.Context.Map(output.Staging, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
+                bool empty;
 
                 try
                 {
+                    // A frame without a present (LastPresentTime 0) can be an empty surface when DWM has not composed
+                    // since the duplication was created. Wait for the next composed frame instead.
                     byte* source = (byte*)mapped.DataPointer + (long)sourceY * mapped.RowPitch + sourceX * 4L;
-
-                    // A frame without a present (LastPresentTime 0) can be an empty surface when DWM has not composed since
-                    // the duplication was created. Wait for the next composed frame instead.
-                    if (frameInfo.LastPresentTime == 0 && IsEmptySurface(source, mapped.RowPitch, intersection.Width, intersection.Height))
-                    {
-                        if (Stopwatch.GetTimestamp() >= deadline)
-                        {
-                            return false;
-                        }
-
-                        continue;
-                    }
-
-                    int destinationX = intersection.X - rectangle.X;
-                    int destinationY = intersection.Y - rectangle.Y;
-                    byte* destination = (byte*)bitmap.GetPixels() + (long)destinationY * bitmap.RowBytes + destinationX * 4L;
-
-                    for (int y = 0; y < intersection.Height; y++)
-                    {
-                        CopyRowOpaque(new ReadOnlySpan<uint>(source, intersection.Width), new Span<uint>(destination, intersection.Width));
-                        source += mapped.RowPitch;
-                        destination += bitmap.RowBytes;
-                    }
-
-                    return true;
+                    empty = IsEmptySurface(source, mapped.RowPitch, intersection.Width, intersection.Height);
                 }
                 finally
                 {
                     adapter.Context.Unmap(output.Staging, 0);
                 }
+
+                if (!empty)
+                {
+                    return true;
+                }
+
+                if (Stopwatch.GetTimestamp() >= deadline)
+                {
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>Copies the part of <paramref name="rectangle"/> on the output from its staging texture into <paramref name="bitmap"/>.</summary>
+        private static unsafe void CopyFromStaging(OutputCapture capture, Rectangle rectangle, SKBitmap bitmap)
+        {
+            AdapterState adapter = capture.Adapter;
+            OutputState output = capture.Output;
+            Rectangle intersection = capture.Intersection;
+            int sourceX = intersection.X - output.Bounds.X;
+            int sourceY = intersection.Y - output.Bounds.Y;
+
+            MappedSubresource mapped = adapter.Context.Map(output.Staging, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
+
+            try
+            {
+                byte* source = (byte*)mapped.DataPointer + (long)sourceY * mapped.RowPitch + sourceX * 4L;
+                int destinationX = intersection.X - rectangle.X;
+                int destinationY = intersection.Y - rectangle.Y;
+                byte* destination = (byte*)bitmap.GetPixels() + (long)destinationY * bitmap.RowBytes + destinationX * 4L;
+
+                for (int y = 0; y < intersection.Height; y++)
+                {
+                    CopyRowOpaque(new ReadOnlySpan<uint>(source, intersection.Width), new Span<uint>(destination, intersection.Width));
+                    source += mapped.RowPitch;
+                    destination += bitmap.RowBytes;
+                }
+            }
+            finally
+            {
+                adapter.Context.Unmap(output.Staging, 0);
             }
         }
 
@@ -446,6 +636,8 @@ namespace ShareX.ScreenCaptureLib
 
         private static void Reset()
         {
+            Interlocked.Exchange(ref precaptureState, PrecaptureNone);
+
             if (adapters != null)
             {
                 foreach (AdapterState adapter in adapters) adapter.Dispose();
