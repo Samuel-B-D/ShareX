@@ -48,6 +48,10 @@ namespace ShareX
 
         private IHotkeyHost hotkeyHost;
 
+        // Win hotkeys that Windows keeps for itself (RegisterHotKey fails, e.g. Win+Shift+S), run by the keyboard hook.
+        private readonly Dictionary<int, HotkeySettings> keyboardHookHotkeys = new Dictionary<int, HotkeySettings>();
+        private int lastKeyboardHookToken;
+
         public HotkeyManager(IHotkeyHost host)
         {
             hotkeyHost = host;
@@ -60,6 +64,34 @@ namespace ShareX
             // UI thread (CaptureHelpers.IsActiveWindowFullscreen does, through DesktopScreen).
             RegionCaptureKeyboardGuard.Start(() => !IgnoreHotkeys &&
                 (!ApplicationState.Settings.DisableHotkeysOnFullscreen || !RegionCaptureKeyboardGuard.IsForegroundWindowFullscreen()));
+            RegionCaptureKeyboardGuard.HookHotkeyPressed += OnKeyboardHookHotkeyPressed;
+        }
+
+        private void OnKeyboardHookHotkeyPressed(int token)
+        {
+            keyboardHookHotkeys.TryGetValue(token, out HotkeySettings hotkeySetting);
+            HandleHotkeyPress(hotkeySetting);
+        }
+
+        private bool IsKeyboardHookHotkey(HotkeySettings hotkeySetting, out int token)
+        {
+            foreach (KeyValuePair<int, HotkeySettings> pair in keyboardHookHotkeys)
+            {
+                if (pair.Value == hotkeySetting)
+                {
+                    token = pair.Key;
+                    return true;
+                }
+            }
+
+            token = 0;
+            return false;
+        }
+
+        private void UpdateKeyboardHookHotkeys()
+        {
+            RegionCaptureKeyboardGuard.SetHookHotkeys(keyboardHookHotkeys
+                .Select(x => ((int)x.Value.HotkeyInfo.KeyCode, x.Value.HotkeyInfo.ModifiersEnum, x.Key)));
         }
 
         /// <summary>Tells the region capture keyboard guard which registered hotkeys open the region capture.</summary>
@@ -134,6 +166,15 @@ namespace ShareX
                     {
                         DebugHelper.WriteLine("Hotkey registered: " + hotkeySetting);
                     }
+                    else if (hotkeySetting.HotkeyInfo.Status == HotkeyStatus.Failed && hotkeySetting.HotkeyInfo.Win)
+                    {
+                        // A Win shortcut of Windows (Win+Shift+S...): the keyboard hook sees the key first and takes it.
+                        int token = ++lastKeyboardHookToken;
+                        keyboardHookHotkeys[token] = hotkeySetting;
+                        hotkeySetting.HotkeyInfo.Status = HotkeyStatus.Registered;
+                        UpdateKeyboardHookHotkeys();
+                        DebugHelper.WriteLine("Hotkey registered with the keyboard hook (Windows shortcut overridden): " + hotkeySetting);
+                    }
                     else if (hotkeySetting.HotkeyInfo.Status == HotkeyStatus.Failed)
                     {
                         DebugHelper.WriteLine("Hotkey register failed: " + hotkeySetting);
@@ -171,7 +212,14 @@ namespace ShareX
 
         public void UnregisterHotkey(HotkeySettings hotkeySetting, bool removeFromList = true)
         {
-            if (hotkeySetting.HotkeyInfo.Status == HotkeyStatus.Registered)
+            if (IsKeyboardHookHotkey(hotkeySetting, out int token))
+            {
+                keyboardHookHotkeys.Remove(token);
+                UpdateKeyboardHookHotkeys();
+                hotkeySetting.HotkeyInfo.Status = HotkeyStatus.NotConfigured;
+                DebugHelper.WriteLine("Hotkey unregistered from the keyboard hook: " + hotkeySetting);
+            }
+            else if (hotkeySetting.HotkeyInfo.Status == HotkeyStatus.Registered)
             {
                 hotkeyHost.UnregisterHotkey(hotkeySetting.HotkeyInfo);
 

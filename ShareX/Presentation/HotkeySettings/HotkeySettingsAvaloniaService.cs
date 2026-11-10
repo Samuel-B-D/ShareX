@@ -179,7 +179,14 @@ internal sealed class HotkeySettingsAvaloniaService : IHotkeySettingsService
 
     public void SetCaptureMode(bool isCapturing)
     {
-        InvokeOnMainThread(() => _manager.IgnoreHotkeys = isCapturing);
+        InvokeOnMainThread(() =>
+        {
+            _manager.IgnoreHotkeys = isCapturing;
+
+            // Windows acts on its own Win shortcuts (Win+Shift+S) before the window sees the key: the keyboard hook takes
+            // them and reports them to the window instead (HotkeySettingsWindow.OnWinShortcutRecorded).
+            ShareX.ScreenCaptureLib.Presentation.RegionCapture.RegionCaptureKeyboardGuard.RecordWinShortcuts = isCapturing;
+        });
     }
 
     public void Refresh(HotkeySettingsItem item)

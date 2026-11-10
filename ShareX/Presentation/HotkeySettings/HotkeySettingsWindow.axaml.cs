@@ -31,6 +31,8 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using ShareX.AvaloniaUI.Controls;
 using ShareX.AvaloniaUI.Theming;
+using ShareX.HelpersLib;
+using ShareX.ScreenCaptureLib.Presentation.RegionCapture;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -67,7 +69,33 @@ public partial class HotkeySettingsWindow : Window
     {
         _viewModel = new HotkeySettingsViewModel(service);
         DataContext = _viewModel;
-        Closed += (_, _) => _viewModel?.Dispose();
+        RegionCaptureKeyboardGuard.WinShortcutRecorded += OnWinShortcutRecorded;
+        Closed += (_, _) =>
+        {
+            RegionCaptureKeyboardGuard.WinShortcutRecorded -= OnWinShortcutRecorded;
+            _viewModel?.Dispose();
+        };
+    }
+
+    // A Win shortcut pressed while recording (taken by the keyboard hook before Windows acted on it, see
+    // HotkeySettingsAvaloniaService.SetCaptureMode). The window itself never got the key.
+    private void OnWinShortcutRecorded(int virtualKey, Modifiers modifiers)
+    {
+        HotkeySettingsItem? item = _viewModel?.Items.FirstOrDefault(x => x.IsCapturing);
+
+        if (item == null)
+        {
+            return;
+        }
+
+        HotkeyGesture gesture = new(
+            ((InputKey)virtualKey).ToString(),
+            modifiers.HasFlag(Modifiers.Control),
+            modifiers.HasFlag(Modifiers.Shift),
+            modifiers.HasFlag(Modifiers.Alt),
+            true);
+
+        _viewModel!.ApplyGesture(item, gesture);
     }
 
     private void OnAddClick(object? sender, RoutedEventArgs e) => _viewModel?.Add();
