@@ -84,20 +84,45 @@ public static class RegionCaptureIntegration
 
             try
             {
+                if (IsCancelRequested)
+                {
+                    // Escape was pressed while the screenshot was taken: never show the capture.
+                    _prewarmedWindow?.Conceal();
+                    request.Screenshot.Dispose();
+                    request.CursorBitmap?.Dispose();
+                    completion.TrySetResult(null);
+                    return;
+                }
+
                 ImageEditorIntegration.Initialize();
                 window = TakePrewarmedWindow();
+                _activeCaptureWindow = window;
 
                 if (window != null)
                 {
                     Task<AvaloniaRegionCaptureResult?> capture = window.CaptureAsync(request);
                     requestAttached = true;
+
+                    if (IsCancelRequested)
+                    {
+                        window.CancelFromEscape();
+                    }
+
                     completion.TrySetResult(await capture);
                 }
                 else
                 {
                     window = new RegionCaptureWindow(request);
+                    _activeCaptureWindow = window;
                     requestAttached = true;
-                    completion.TrySetResult(await window.CaptureAsync());
+                    Task<AvaloniaRegionCaptureResult?> capture = window.CaptureAsync();
+
+                    if (IsCancelRequested)
+                    {
+                        window.CancelFromEscape();
+                    }
+
+                    completion.TrySetResult(await capture);
                 }
             }
             catch (Exception ex)
@@ -118,6 +143,9 @@ public static class RegionCaptureIntegration
             }
             finally
             {
+                // The capture flow that called this method ends the capture input (EndCaptureInput) when it is done.
+                _activeCaptureWindow = null;
+
                 // Get the next window ready once the current capture flow has settled.
                 _ = Task.Delay(PrewarmDelayAfterCapture).ContinueWith(_ => PrepareWindow(), TaskScheduler.Default);
             }
@@ -127,6 +155,60 @@ public static class RegionCaptureIntegration
     }
 
     private static readonly TimeSpan PrewarmDelayAfterCapture = TimeSpan.FromSeconds(1);
+    private static RegionCaptureWindow? _activeCaptureWindow;
+    private static bool _escapeGuardHooked;
+    private static bool _captureInProgress;
+
+    /// <summary>
+    /// A region capture runs, from <see cref="BeginCaptureInput"/> to <see cref="EndCaptureInput"/> (UI thread). Other
+    /// captures must not start meanwhile: their screenshot would contain the capture overlay.
+    /// </summary>
+    public static bool IsCaptureInProgress => _captureInProgress;
+
+    /// <summary>
+    /// True when Escape was pressed since the capture hotkey (or <see cref="BeginCaptureInput"/>). Set by the keyboard
+    /// guard thread the moment the key is pressed, so every step of the capture can check it.
+    /// </summary>
+    public static bool IsCancelRequested => RegionCaptureKeyboardGuard.CancelRequested;
+
+    /// <summary>
+    /// Call on the UI thread when a region capture starts, and always pair it with <see cref="EndCaptureInput"/> when the
+    /// capture flow is done. Marks the capture in progress and confirms the Escape guard the capture hotkey armed
+    /// (keeping an Escape already pressed), or arms it for captures started without the keyboard. Calling it again
+    /// during the same capture keeps the state. See RegionCaptureKeyboardGuard.
+    /// </summary>
+    public static void BeginCaptureInput()
+    {
+        if (!_escapeGuardHooked)
+        {
+            RegionCaptureKeyboardGuard.EscapePressed += OnGuardedEscape;
+            _escapeGuardHooked = true;
+        }
+
+        _captureInProgress = true;
+        RegionCaptureKeyboardGuard.BeginCapture();
+    }
+
+    /// <summary>The capture flow ended (UI thread): Escape is no longer consumed and another capture can start.</summary>
+    public static void EndCaptureInput()
+    {
+        RegionCaptureKeyboardGuard.EndCapture();
+        _captureInProgress = false;
+    }
+
+    private static void OnGuardedEscape()
+    {
+        if (_activeCaptureWindow != null)
+        {
+            // Every Escape of the capture arrives here, whichever window has the keyboard.
+            _activeCaptureWindow.HandleGuardedEscape();
+        }
+        else
+        {
+            // Not attached yet: hide the overlay now; the capture is dropped before it is attached.
+            _prewarmedWindow?.Conceal();
+        }
+    }
     private static RegionCaptureWindow? _prewarmedWindow;
     private static bool _displaySettingsHooked;
 
@@ -188,6 +270,11 @@ public static class RegionCaptureIntegration
     {
         void Show()
         {
+            if (IsCancelRequested)
+            {
+                return;
+            }
+
             if (_prewarmedWindow != null && !_prewarmedWindow.ShowEarly(captureBounds))
             {
                 _prewarmedWindow.Reveal();

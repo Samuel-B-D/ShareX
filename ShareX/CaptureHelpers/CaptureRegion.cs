@@ -40,13 +40,48 @@ namespace ShareX
             return null;
         }
 
-        protected override async Task<TaskMetadata> ExecuteAsync(TaskSettings taskSettings)
+        protected override void OnCaptureStarting()
         {
-            return await ExecuteRegionCaptureAvaloniaAsync(taskSettings);
+            // From the first moment of the capture flow, Escape cancels it whenever it is pressed, and no other capture
+            // starts until it ends (ExecuteAsync or OnCaptureAborted).
+            RegionCaptureIntegration.BeginCaptureInput();
+        }
+
+        protected override void OnCaptureAborted()
+        {
+            RegionCaptureIntegration.ConcealPrewarmedWindow();
+            RegionCaptureIntegration.EndCaptureInput();
+        }
+
+        protected sealed override async Task<TaskMetadata> ExecuteAsync(TaskSettings taskSettings)
+        {
+            try
+            {
+                return await ExecuteCaptureAsync(taskSettings);
+            }
+            finally
+            {
+                // Every path out of the capture goes through here.
+                RegionCaptureIntegration.EndCaptureInput();
+            }
+        }
+
+        protected virtual Task<TaskMetadata> ExecuteCaptureAsync(TaskSettings taskSettings)
+        {
+            return ExecuteRegionCaptureAvaloniaAsync(taskSettings);
         }
 
         protected async Task<TaskMetadata> ExecuteRegionCaptureAvaloniaAsync(TaskSettings taskSettings)
         {
+            // Normally already started in OnCaptureStarting (keeps its state); ended by ExecuteAsync.
+            RegionCaptureIntegration.BeginCaptureInput();
+
+            if (RegionCaptureIntegration.IsCancelRequested)
+            {
+                // Escape was pressed right after the hotkey: do not even take the screenshot.
+                return null;
+            }
+
             Screenshot screenshot = TaskHelpers.GetScreenshot(taskSettings);
             screenshot.CaptureCursor = false;
 
@@ -70,8 +105,10 @@ namespace ShareX
                     ? screenshot.CaptureActiveMonitor()
                     : screenshot.CaptureFullscreen();
 
-                if (frozenScreenshot == null)
+                if (frozenScreenshot == null || RegionCaptureIntegration.IsCancelRequested)
                 {
+                    // No screenshot, or Escape was pressed while it was taken.
+                    frozenScreenshot?.Dispose();
                     RegionCaptureIntegration.ConcealPrewarmedWindow();
                     return null;
                 }

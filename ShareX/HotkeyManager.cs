@@ -25,6 +25,7 @@
 
 using ShareX.HelpersLib;
 using ShareX.Localization;
+using ShareX.ScreenCaptureLib.Presentation.RegionCapture;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -52,19 +53,41 @@ namespace ShareX
             hotkeyHost = host;
             hotkeyHost.HotkeyPress += OnHotkeyPressed;
             hotkeyHost.Closed += OnHostClosed;
+
+            // Escape must cancel a region capture whenever it is pressed after the hotkey, even while the UI thread is
+            // busy taking the screenshot. The guard sees the hotkey key press itself on its own thread; this mirrors the
+            // conditions under which OnHotkeyPressed runs the hotkey. It runs on the guard thread, so it must not touch the
+            // UI thread (CaptureHelpers.IsActiveWindowFullscreen does, through DesktopScreen).
+            RegionCaptureKeyboardGuard.Start(() => !IgnoreHotkeys &&
+                (!ApplicationState.Settings.DisableHotkeysOnFullscreen || !RegionCaptureKeyboardGuard.IsForegroundWindowFullscreen()));
+        }
+
+        /// <summary>Tells the region capture keyboard guard which registered hotkeys open the region capture.</summary>
+        private void UpdateRegionCaptureKeyboardGuard()
+        {
+            RegionCaptureKeyboardGuard.SetArmingHotkeys(Hotkeys
+                .Where(x => x.HotkeyInfo.Status == HotkeyStatus.Registered && x.TaskSettings.Job == HotkeyType.RectangleRegion)
+                .Select(x => ((int)x.HotkeyInfo.KeyCode, x.HotkeyInfo.ModifiersEnum)));
         }
 
         private void OnHotkeyPressed(ushort id, InputKey key, Modifiers modifier)
         {
+            HandleHotkeyPress(Hotkeys.Find(x => x.HotkeyInfo.ID == id));
+        }
+
+        private void HandleHotkeyPress(HotkeySettings hotkeySetting)
+        {
             if (!IgnoreHotkeys && (!ApplicationState.Settings.DisableHotkeysOnFullscreen || !CaptureHelpers.IsActiveWindowFullscreen()))
             {
-                HotkeySettings hotkeySetting = Hotkeys.Find(x => x.HotkeyInfo.ID == id);
-
                 if (hotkeySetting != null)
                 {
                     OnHotkeyTrigger(hotkeySetting);
                 }
             }
+
+            // A region capture started by this hotkey has confirmed the Escape guard by now (synchronously, see
+            // CaptureBase.CaptureAsync); otherwise the arm made by the key press is dropped.
+            RegionCaptureKeyboardGuard.ReleaseUnconfirmed();
         }
 
         private void OnHostClosed(object sender, EventArgs e)
@@ -126,6 +149,8 @@ namespace ShareX
             {
                 Hotkeys.Add(hotkeySetting);
             }
+
+            UpdateRegionCaptureKeyboardGuard();
         }
 
         public void RegisterAllHotkeys()
@@ -164,6 +189,8 @@ namespace ShareX
             {
                 Hotkeys.Remove(hotkeySetting);
             }
+
+            UpdateRegionCaptureKeyboardGuard();
         }
 
         public void UnregisterAllHotkeys(bool removeFromList = true, bool temporary = false)

@@ -24,6 +24,7 @@
 #endregion License Information (GPL v3)
 
 using ShareX.HelpersLib;
+using ShareX.ScreenCaptureLib.Presentation.RegionCapture;
 using System;
 using System.Drawing;
 using System.Threading.Tasks;
@@ -49,6 +50,16 @@ namespace ShareX
 
         protected abstract TaskMetadata Execute(TaskSettings taskSettings);
 
+        /// <summary>Called on the UI thread right before the capture starts (after a configured screenshot delay).</summary>
+        protected virtual void OnCaptureStarting()
+        {
+        }
+
+        /// <summary>Called when the capture failed with an exception.</summary>
+        protected virtual void OnCaptureAborted()
+        {
+        }
+
         protected virtual Task<TaskMetadata> ExecuteAsync(TaskSettings taskSettings)
         {
             return Task.FromResult(Execute(taskSettings));
@@ -56,6 +67,14 @@ namespace ShareX
 
         private async Task CaptureAsync(TaskSettings taskSettings, bool autoHideForm)
         {
+            // One capture at a time while the region capture is open: a screenshot taken now would contain its overlay
+            // (the capture hotkey pressed again, another capture hotkey...).
+            if (RegionCaptureIntegration.IsCaptureInProgress)
+            {
+                DebugHelper.WriteLine("Capture ignored: a region capture is in progress.");
+                return;
+            }
+
             try
             {
                 if (taskSettings.CaptureSettings.ScreenshotDelay > 0)
@@ -68,13 +87,22 @@ namespace ShareX
                     }
 
                     await Task.Delay(delay);
+
+                    if (RegionCaptureIntegration.IsCaptureInProgress)
+                    {
+                        DebugHelper.WriteLine("Capture ignored: a region capture is in progress.");
+                        return;
+                    }
                 }
 
+                // Runs synchronously in the hotkey message when there is no screenshot delay (no await before it).
+                OnCaptureStarting();
                 await CaptureInternalAsync(taskSettings, autoHideForm);
             }
             catch (Exception ex)
             {
                 DebugHelper.WriteException(ex);
+                OnCaptureAborted();
             }
         }
 

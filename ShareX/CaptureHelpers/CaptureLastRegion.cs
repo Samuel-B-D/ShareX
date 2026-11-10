@@ -35,7 +35,16 @@ namespace ShareX
 {
     public class CaptureLastRegion : CaptureRegion
     {
-        protected override async Task<TaskMetadata> ExecuteAsync(TaskSettings taskSettings)
+        protected override void OnCaptureStarting()
+        {
+            // Only the region capture (no last region yet) shows the overlay and guards Escape.
+            if (RegionCaptureIntegration.LastRegionRectangle.IsEmpty)
+            {
+                base.OnCaptureStarting();
+            }
+        }
+
+        protected override async Task<TaskMetadata> ExecuteCaptureAsync(TaskSettings taskSettings)
         {
             if (RegionCaptureIntegration.LastRegionRectangle.IsEmpty)
             {

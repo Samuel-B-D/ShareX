@@ -130,31 +130,47 @@ public static class RegionCaptureTasks
     {
         options ??= new RegionCaptureOptions();
 
-        Screenshot screenshot = new Screenshot
+        if (RegionCaptureIntegration.IsCaptureInProgress)
         {
-            CaptureCursor = false
-        };
+            // A region capture is already open: its overlay would be in this screenshot.
+            return null;
+        }
 
-        Rectangle screenBounds = options.ActiveMonitorMode
-            ? CaptureHelpers.GetActiveScreenBounds()
-            : CaptureHelpers.GetScreenBounds();
+        // Escape cancels the capture whenever it is pressed, even before the overlay has focus.
+        RegionCaptureIntegration.BeginCaptureInput();
 
-        // The capture is already a new bitmap owned by this request, so it is handed over without a copy.
-        SKBitmap frozenScreenshot = options.ActiveMonitorMode
-            ? screenshot.CaptureActiveMonitor()
-            : screenshot.CaptureFullscreen();
-
-        AvaloniaRegionCaptureRequest request = new AvaloniaRegionCaptureRequest
+        try
         {
-            Screenshot = frozenScreenshot,
-            // Screen captures are opaque: WindowsImageInterop.Capture and HDR correction set alpha to 255.
-            ScreenshotIsOpaque = true,
-            ScreenBounds = screenBounds,
-            RegionCaptureOptions = options,
-            ImageEditorOptions = new ImageEditorOptions(),
-            EnableAnnotations = false
-        };
+            Screenshot screenshot = new Screenshot
+            {
+                CaptureCursor = false
+            };
 
-        return await RegionCaptureIntegration.CaptureAsync(request);
+            Rectangle screenBounds = options.ActiveMonitorMode
+                ? CaptureHelpers.GetActiveScreenBounds()
+                : CaptureHelpers.GetScreenBounds();
+
+            // The capture is already a new bitmap owned by this request, so it is handed over without a copy.
+            SKBitmap frozenScreenshot = options.ActiveMonitorMode
+                ? screenshot.CaptureActiveMonitor()
+                : screenshot.CaptureFullscreen();
+
+            AvaloniaRegionCaptureRequest request = new AvaloniaRegionCaptureRequest
+            {
+                Screenshot = frozenScreenshot,
+                // Screen captures are opaque: WindowsImageInterop.Capture and HDR correction set alpha to 255.
+                ScreenshotIsOpaque = true,
+                ScreenBounds = screenBounds,
+                RegionCaptureOptions = options,
+                ImageEditorOptions = new ImageEditorOptions(),
+                EnableAnnotations = false
+            };
+
+            return await RegionCaptureIntegration.CaptureAsync(request);
+        }
+        finally
+        {
+            RegionCaptureIntegration.EndCaptureInput();
+        }
     }
 }

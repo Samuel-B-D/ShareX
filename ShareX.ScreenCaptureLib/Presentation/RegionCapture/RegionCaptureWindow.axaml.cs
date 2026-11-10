@@ -156,6 +156,60 @@ public partial class RegionCaptureWindow : Window
         AddHandler(KeyDownEvent, OnCaptureHostKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
     }
 
+    /// <summary>
+    /// Escape consumed by RegionCaptureKeyboardGuard. During a capture every Escape arrives here instead of through
+    /// Avalonia's key routing, so it works whichever window or control has the keyboard. Same rules as a routed
+    /// Escape: before the capture accepts input it cancels; text editing and open popups get the key first; with an
+    /// annotation tool, an active interaction or selection is cancelled first; otherwise the capture is cancelled.
+    /// </summary>
+    internal void HandleGuardedEscape()
+    {
+        if (_closing)
+        {
+            return;
+        }
+
+        if (_keyboardInputEnabled)
+        {
+            IInputElement? focused = FocusManager?.GetFocusedElement();
+
+            if (focused is Interactive target && (focused is TextBox || (focused is Visual visual && TopLevel.GetTopLevel(visual) != this)))
+            {
+                // Text annotation editing, a text field or a popup: let it handle Escape like a real key press.
+                KeyEventArgs args = new KeyEventArgs
+                {
+                    RoutedEvent = KeyDownEvent,
+                    Source = target,
+                    Key = Key.Escape,
+                    KeyModifiers = KeyModifiers.None
+                };
+
+                target.RaiseEvent(args);
+
+                if (args.Handled)
+                {
+                    DebugHelper.WriteLine("Region capture: Escape handled by " + target.GetType().Name + ".");
+                    return;
+                }
+            }
+
+            if (!_regionToolActive && _editorWorkspace.CancelActiveInteractionOrSelection())
+            {
+                DebugHelper.WriteLine("Region capture: Escape cancelled the active annotation interaction or selection.");
+                return;
+            }
+        }
+
+        DebugHelper.WriteLine("Region capture: Escape cancelled the capture.");
+        CancelCapture();
+    }
+
+    /// <summary>Cancels the capture for an Escape pressed before the capture was attached to this window.</summary>
+    internal void CancelFromEscape()
+    {
+        CancelCapture();
+    }
+
     public RegionCaptureWindow(AvaloniaRegionCaptureRequest request) : this()
     {
         _request = request ?? throw new ArgumentNullException(nameof(request));
@@ -399,6 +453,14 @@ public partial class RegionCaptureWindow : Window
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+        {
+            // Handled on key down so Windows does not run Alt+Escape (send the window to the back, moving the
+            // keyboard focus away from the capture). Escape cancels the capture on key up.
+            e.Handled = true;
+            return;
+        }
+
         if (_keyboardInputEnabled && !_closing && _request != null &&
             e.KeyModifiers == KeyModifiers.None && _viewModel?.IsModalOpen != true &&
             (e.Key == Key.Tab || (e.Key == Key.NumPad0 && !e.Handled))) // NumPad0 matches ShareX 21; a toolbar hotkey on it wins.
@@ -499,7 +561,9 @@ public partial class RegionCaptureWindow : Window
             return;
         }
 
-        if (e.Key != Key.Escape || e.KeyModifiers != KeyModifiers.None || _closing)
+        // Modifiers of the capture hotkey can still be held when Escape is pressed right after it (Alt+PrintScreen,
+        // then Escape gives Alt+Escape), so Ctrl/Alt/Shift do not prevent cancelling.
+        if (e.Key != Key.Escape || e.KeyModifiers.HasFlag(KeyModifiers.Meta) || _closing)
         {
             return;
         }
