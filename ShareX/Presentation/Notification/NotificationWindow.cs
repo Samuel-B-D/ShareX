@@ -153,14 +153,22 @@ public partial class NotificationWindow : Window
         });
     }
 
-    public static async Task CloseActiveWindowAsync()
+    public static Task CloseActiveWindowAsync()
     {
         if (Application.Current == null)
         {
-            return;
+            return Task.CompletedTask;
         }
 
-        await Dispatcher.UIThread.InvokeAsync(() => _instance?.Close());
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            // Synchronously: a capture awaits this right before taking the screenshot, and a queued dispatcher job would
+            // delay the screenshot behind whatever else is queued.
+            _instance?.Close();
+            return Task.CompletedTask;
+        }
+
+        return Dispatcher.UIThread.InvokeAsync(() => _instance?.Close()).GetTask();
     }
 
     public void LoadConfig(NotificationWindowConfig config)
