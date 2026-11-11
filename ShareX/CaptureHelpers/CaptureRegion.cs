@@ -98,7 +98,9 @@ namespace ShareX
 
             // Nothing is shown before the screenshot is taken: a window appearing over other applications (even one
             // excluded from capture) changes the window under the mouse, and their popups, menus, tooltips and hover
-            // previews close before the frame is composed.
+            // previews close before the frame is composed. The overlay is then shown in one step, screenshot included
+            // (RegionCaptureIntegration.CaptureAsync attaches it in this hotkey message): showing it in parts lets the
+            // live desktop, which no longer matches the screenshot, flash for a frame.
 
             // The capture is a new bitmap owned by the request, no extra copy needed.
             SKBitmap frozenScreenshot = null;
@@ -111,6 +113,13 @@ namespace ShareX
                     ? screenshot.CaptureActiveMonitor()
                     : screenshot.CaptureFullscreen();
 
+                long hotkeyTimestamp = RegionCaptureKeyboardGuard.HotkeyTimestamp;
+
+                if (hotkeyTimestamp != 0)
+                {
+                    DebugHelper.WriteLine($"Region capture: screenshot ready {System.Diagnostics.Stopwatch.GetElapsedTime(hotkeyTimestamp).TotalMilliseconds:0.0} ms after the hotkey key press.");
+                }
+
                 if (frozenScreenshot == null || RegionCaptureIntegration.IsCancelRequested)
                 {
                     // No screenshot, or Escape was pressed while it was taken.
@@ -118,9 +127,6 @@ namespace ShareX
                     RegionCaptureIntegration.ConcealPrewarmedWindow();
                     return null;
                 }
-
-                // The screenshot exists: show the overlay right away, before the capture is attached to it.
-                RegionCaptureIntegration.ShowPrewarmedOverlay(screenBounds);
 
                 if (taskSettings.CaptureSettings.ShowCursor)
                 {
@@ -136,7 +142,6 @@ namespace ShareX
             }
             catch
             {
-                // The overlay may already be shown over the live desktop; never leave it on screen without a capture.
                 RegionCaptureIntegration.ConcealPrewarmedWindow();
                 frozenScreenshot?.Dispose();
                 cursorBitmap?.Dispose();

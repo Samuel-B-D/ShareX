@@ -33,6 +33,8 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Rendering.Composition;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using ShareX.AvaloniaUI.Input;
 using ShareX.AvaloniaUI.Theming;
@@ -46,7 +48,9 @@ using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using AvaloniaCanvas = Avalonia.Controls.Canvas;
 using DrawingColor = System.Drawing.Color;
@@ -134,10 +138,8 @@ public partial class RegionCaptureWindow : Window
     // Created ahead of time, shown cloaked (invisible and not hit-testable) until a capture is attached.
     private bool _prewarmed;
     private DrawingRectangle _prewarmBounds;
-    // The prewarmed UI has been rendered once and made fully transparent, so showing the window changes no pixel.
-    private bool _prewarmTransparent;
-    // Shown over the live desktop before the screenshot existed (see ShowEarly).
-    private bool _shownEarly;
+    // When the capture was attached (Stopwatch timestamp), for the latency log.
+    private long _attachedAt;
     private RegionCaptureOptions? _workspaceModelRegionCaptureOptions;
     private ImageEditorOptions? _workspaceModelImageEditorOptions;
     private string? _workspaceModelKey;
@@ -288,6 +290,7 @@ public partial class RegionCaptureWindow : Window
         }
 
         _request = request ?? throw new ArgumentNullException(nameof(request));
+        _attachedAt = Stopwatch.GetTimestamp();
         _imageWidth = Math.Max(1, request.ScreenBounds.Width);
         _imageHeight = Math.Max(1, request.ScreenBounds.Height);
 
@@ -323,85 +326,82 @@ public partial class RegionCaptureWindow : Window
 
     public bool IsPrewarmedAndIdle => _prewarmed && _request == null && !_closing && IsVisible;
 
-    /// <summary>
-    /// Shows the capture overlay (dim layer and toolbars) over the live desktop before the screenshot exists, so it
-    /// appears within a frame or two of the hotkey. The window is excluded from screen capture until the screenshot
-    /// has been taken, and the screenshot (identical to the desktop under it) is shown when the capture is attached.
-    /// </summary>
-    public bool ShowEarly(DrawingRectangle captureBounds)
-    {
-        if (!IsPrewarmedAndIdle || !_prewarmTransparent || captureBounds != _prewarmBounds || !SetExcludedFromCapture(true))
-        {
-            return false;
-        }
-
-        _editorWorkspace.Opacity = 0;
-
-        // No screenshot to magnify yet, and the panel is not next to the pointer: UpdateHud shows and places it when
-        // the capture is attached.
-        _magnifierPanel.IsVisible = false;
-        _selectionInfoPanel.IsVisible = false;
-
-        // The toolbar has never been placed in a prewarmed window (it sits at the top left corner of the window): put
-        // it where the capture will have it (StartCaptureAsync places it again, at the same spot) before it is seen.
-        if (_workspaceModelRegionCaptureOptions != null)
-        {
-            DrawingPoint cursorPosition = CaptureHelpers.GetCursorPosition();
-            UpdateToolbarPosition(new PixelPoint(cursorPosition.X, cursorPosition.Y), _workspaceModelRegionCaptureOptions,
-                _prewarmBounds);
-        }
-
-        if (Content is Visual root)
-        {
-            root.Opacity = 1;
-        }
-
-        SetCloaked(false);
-        _shownEarly = true;
-        return true;
-    }
-
-    /// <summary>
-    /// Shows the idle prewarmed window while it is fully transparent: nothing changes on screen, but DWM composes a new
-    /// frame, which the Desktop Duplication capture needs on a static screen.
-    /// </summary>
-    public bool Reveal()
-    {
-        if (!IsPrewarmedAndIdle || !_prewarmTransparent)
-        {
-            return false;
-        }
-
-        SetCloaked(false);
-        return true;
-    }
-
-    /// <summary>Hides an early shown window again when the capture did not start.</summary>
+    /// <summary>Keeps an idle prewarmed window hidden when a capture did not start.</summary>
     public void Conceal()
     {
         if (IsPrewarmedAndIdle)
         {
             SetCloaked(true);
-
-            if (Content is Visual root)
-            {
-                root.Opacity = 0;
-            }
-
-            _editorWorkspace.Opacity = 1;
-            SetExcludedFromCapture(false);
-            _shownEarly = false;
         }
     }
 
-    private bool SetExcludedFromCapture(bool excluded)
+    /// <summary>
+    /// Uncloaks the window once the render thread has rendered the frame that contains the attached capture, so DWM
+    /// shows the window and that frame in the same composition: the window never appears empty, transparent or half
+    /// laid out, and the window under the mouse only changes when the overlay covers everything. The window is
+    /// activated after that, so the previous foreground application never visibly deactivates before it is covered.
+    /// </summary>
+    private void RevealWhenRendered()
     {
         IntPtr handle = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
-        return handle != IntPtr.Zero && NativeMethods.SetWindowDisplayAffinity(handle, excluded ? WdaExcludeFromCapture : WdaNone);
+        Task? rendered = null;
+
+        try
+        {
+            rendered = ElementComposition.GetElementVisual(this)?.Compositor.RequestCompositionBatchCommitAsync().Rendered;
+        }
+        catch (Exception ex)
+        {
+            DebugHelper.WriteException(ex, "Region capture: could not wait for the first frame.");
+        }
+
+        if (rendered == null || handle == IntPtr.Zero)
+        {
+            SetCloaked(false);
+            ActivateCapture(Stopwatch.GetTimestamp());
+            return;
+        }
+
+        int revealed = 0;
+
+        void Reveal()
+        {
+            // Render thread (right after the frame was rendered), or the UI thread when the frame never came.
+            if (Interlocked.Exchange(ref revealed, 1) != 0 || Volatile.Read(ref _closing))
+            {
+                return;
+            }
+
+            int value = 0;
+            NativeMethods.DwmSetWindowAttribute(handle, DwmwaCloak, ref value, sizeof(int));
+            long revealedAt = Stopwatch.GetTimestamp();
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => ActivateCapture(revealedAt), DispatcherPriority.Send);
+        }
+
+        rendered.ContinueWith(_ => Reveal(), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        // Never stay hidden if the render thread does not render (device lost...).
+        DispatcherTimer.RunOnce(Reveal, TimeSpan.FromMilliseconds(500));
     }
 
-    private const uint WdaNone = 0x00;
-    private const uint WdaExcludeFromCapture = 0x11;
+    private void ActivateCapture(long revealedAt)
+    {
+        if (_closing)
+        {
+            return;
+        }
+
+        long hotkeyAt = RegionCaptureKeyboardGuard.HotkeyTimestamp;
+
+        if (hotkeyAt != 0 && _attachedAt != 0)
+        {
+            DebugHelper.WriteLine($"Region capture: attached {Stopwatch.GetElapsedTime(hotkeyAt, _attachedAt).TotalMilliseconds:0.0} ms, " +
+                $"revealed {Stopwatch.GetElapsedTime(hotkeyAt, revealedAt).TotalMilliseconds:0.0} ms after the hotkey key press.");
+        }
+
+        Activate();
+        Focus();
+        _regionInputSurface.Focus();
+    }
 
     private void SetCloaked(bool cloaked)
     {
@@ -890,14 +890,13 @@ public partial class RegionCaptureWindow : Window
             _editorWorkspace.ConfigureForFullscreenWorkspace();
             _editorWorkspace.PrepareWorkspaceCanvas(_prewarmBounds.Width, _prewarmBounds.Height);
 
-            // Render the UI once while cloaked so its drawing operations, text and resources are ready, then make it
-            // transparent: the last frame of the cloaked window is then see-through, not an empty dark workspace.
+            // Render the UI once while cloaked so its drawing operations, text and resources are ready. The capture is
+            // only uncloaked once a frame with it has been rendered (RevealWhenRendered); transparent meanwhile anyway.
             RequestAnimationFrame(_ => RequestAnimationFrame(_ =>
             {
                 if (_request == null && Content is Visual root)
                 {
                     root.Opacity = 0;
-                    _prewarmTransparent = ActualTransparencyLevel == WindowTransparencyLevel.Transparent;
                 }
             }));
             return;
@@ -928,44 +927,23 @@ public partial class RegionCaptureWindow : Window
                 ActivateRegionTool();
             }
 
-            if (uncloakAfterRender && ActualTransparencyLevel == WindowTransparencyLevel.Transparent)
+            if (uncloakAfterRender && Content is Visual root)
             {
-                // The prewarmed window is transparent, so it can be shown right away: until the next frame is
-                // presented with the screenshot, the user sees the live desktop through it.
-                if (Content is Visual root)
-                {
-                    root.Opacity = 1;
-                }
-
-                _editorWorkspace.Opacity = 1;
-
-                if (_shownEarly)
-                {
-                    // The screenshot has been taken: screen recorders and sharing see the overlay again.
-                    SetExcludedFromCapture(false);
-                }
-
-                SetCloaked(false);
-                Activate();
-                Focus();
-                _regionInputSurface.Focus();
+                root.Opacity = 1;
             }
-            else if (uncloakAfterRender)
-            {
-                if (Content is Visual root)
-                {
-                    root.Opacity = 1;
-                }
 
-                // No transparency: uncloak after the frame that rendered the screenshot has been committed, so the
-                // empty prewarmed frame is never visible.
-                _editorWorkspace.InvokeWhenWorkspaceRendered(() => RequestAnimationFrame(_ =>
-                {
-                    SetCloaked(false);
-                    Activate();
-                    Focus();
-                    _regionInputSurface.Focus();
-                }), TimeSpan.FromMilliseconds(500));
+            // Toolbar and magnifier are placed before the first frame is rendered.
+            DrawingPoint cursorPosition = CaptureHelpers.GetCursorPosition();
+            _lastPointerPoint = ClampPoint(new Point(
+                cursorPosition.X - _request.ScreenBounds.X,
+                cursorPosition.Y - _request.ScreenBounds.Y));
+            UpdateToolbarPosition(new PixelPoint(cursorPosition.X, cursorPosition.Y));
+            UpdateHud(_lastPointerPoint);
+
+            if (uncloakAfterRender)
+            {
+                // Prewarmed: everything is attached in this dispatcher job, so the next rendered frame is complete.
+                RevealWhenRendered();
             }
             else
             {
@@ -973,13 +951,6 @@ public partial class RegionCaptureWindow : Window
                 Focus();
                 _regionInputSurface.Focus();
             }
-
-            DrawingPoint cursorPosition = CaptureHelpers.GetCursorPosition();
-            _lastPointerPoint = ClampPoint(new Point(
-                cursorPosition.X - _request.ScreenBounds.X,
-                cursorPosition.Y - _request.ScreenBounds.Y));
-            UpdateToolbarPosition(new PixelPoint(cursorPosition.X, cursorPosition.Y));
-            UpdateHud(_lastPointerPoint);
 
             _ = LoadWindowRegionsAsync();
 
@@ -1011,6 +982,30 @@ public partial class RegionCaptureWindow : Window
         try
         {
             IntPtr ignoredHandle = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+            Task<IReadOnlyList<SimpleWindowInfo>>? precaptured = PrecapturedWindowList.Take(_request.RegionCaptureOptions.DetectControls);
+
+            if (precaptured != null)
+            {
+                try
+                {
+                    // Listed with the screenshot when the hotkey modifier was pressed. Ready (nearly always): the window
+                    // under the pointer is highlighted in the first frame.
+                    IReadOnlyList<SimpleWindowInfo> listed = precaptured.IsCompleted ? precaptured.Result : await precaptured;
+
+                    if (!_closing)
+                    {
+                        _windows = listed.Where(x => x.Handle != ignoredHandle).ToList();
+                        UpdateHover(_lastPointerPoint);
+                    }
+
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    DebugHelper.WriteException(ex, "Precaptured window list unusable, listing again.");
+                }
+            }
+
             WindowsRectangleList windows = new WindowsRectangleList
             {
                 IncludeChildWindows = _request.RegionCaptureOptions.DetectControls,

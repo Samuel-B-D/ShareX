@@ -52,26 +52,42 @@ namespace ShareX.ScreenCaptureLib
     /// anything it changes on screen can be in the frame, so it must not show windows over other applications.
     /// </para>
     /// <para>
-    /// <see cref="Precapture"/> takes a frame of every output ahead of time (when the modifier of a capture hotkey is
-    /// pressed, before the foreground application sees the key: Alt closes menus and popups) and keeps it in the staging
-    /// textures. A capture that is allowed to use it and finds it claimed (<see cref="ClaimPrecapture"/>) and recent
-    /// returns that frame instead of a new one.
+    /// A precapture takes a frame of every output ahead of time, when a modifier of a capture hotkey is pressed:
+    /// <see cref="Precapture"/> on the keyboard hook thread for Alt, before the foreground application sees the key (Alt
+    /// closes menus and popups), and <see cref="RequestPrecapture"/> on a worker thread for Ctrl, Shift and Win, without
+    /// delaying the key. The frame is then read back into a bitmap on the worker thread. A capture that is allowed to use
+    /// it and finds it claimed (<see cref="ClaimPrecapture"/>) and recent returns that bitmap instead of waiting for a new
+    /// frame: the hotkey has its screenshot at once, so the overlay can be shown in the next rendered frame.
     /// </para>
     /// Returns null when the duplication cannot be used (rotated or HDR outputs, secure desktop, device lost, no frame
     /// in time, ...) so the caller falls back to GDI.
     /// </summary>
-    internal static class DesktopDuplicationCapture
+    internal static unsafe partial class DesktopDuplicationCapture
     {
         private const int FrameWaitMilliseconds = 100;
-        private const int PrecaptureNone = 0, PrecaptureTaken = 1, PrecaptureClaimed = 2;
-        private static readonly long PrecaptureMaxAge = Stopwatch.Frequency * 3;
+        // A capture waits this long at most for a precapture still being taken when its hotkey was pressed.
+        private const int PrecaptureSettleMilliseconds = 100;
+        private const int PrecaptureNone = 0, PrecaptureTaken = 1, PrecaptureClaimed = 2, PrecapturePending = 3, PrecapturePendingClaimed = 4;
+        // A frame taken on Alt is kept on purpose (menus Alt closed are in it); a frame taken on another modifier is only
+        // used while it is about as current as a new one.
+        private static readonly long AltPrecaptureMaxAge = Stopwatch.Frequency * 3;
+        private static readonly long ModifierPrecaptureMaxAge = Stopwatch.Frequency;
 
         private static readonly object sync = new object();
 
         // PrecaptureTaken or PrecaptureClaimed: the staging texture of each output marked Precaptured holds the whole
-        // output as it was at precaptureTimestamp. Changed without sync, so the hook thread never waits for it.
+        // output as it was at precaptureTimestamp, and precapturedBitmap (when not null) holds them all, read back.
+        // PrecapturePending(Claimed): the worker thread is taking it. Changed without sync, so the hook thread never waits.
         private static int precaptureState;
         private static long precaptureTimestamp;
+        private static long precaptureMaxAge;
+        // Set while no precapture is being taken (PrecapturePending...).
+        private static readonly ManualResetEventSlim precaptureSettled = new ManualResetEventSlim(true);
+        // Under sync. The bitmap is handed to the capture that uses it; otherwise it is kept as the spare for the next one.
+        private static SKBitmap precapturedBitmap;
+        private static Rectangle precapturedBounds;
+        private static SKBitmap spareBitmap;
+        private static volatile uint workerThreadId;
         private static List<AdapterState> adapters;
         private static bool displaySettingsHooked;
 
@@ -120,6 +136,8 @@ namespace ShareX.ScreenCaptureLib
         /// <summary>Creates the Direct3D devices in the background so the first capture does not pay for it.</summary>
         public static void Warmup()
         {
+            StartWorker();
+
             Task.Run(() =>
             {
                 try
@@ -146,6 +164,12 @@ namespace ShareX.ScreenCaptureLib
             if (rectangle.Width <= 0 || rectangle.Height <= 0)
             {
                 return null;
+            }
+
+            if (usePrecapture && Volatile.Read(ref precaptureState) == PrecapturePendingClaimed)
+            {
+                // The hotkey was pressed while its precapture was being taken: it is ready sooner than a new frame.
+                precaptureSettled.Wait(PrecaptureSettleMilliseconds);
             }
 
             lock (sync)
@@ -187,9 +211,17 @@ namespace ShareX.ScreenCaptureLib
                     }
 
                     if (usePrecapture && precapture == PrecaptureClaimed &&
-                        Stopwatch.GetTimestamp() - precaptureTimestamp <= PrecaptureMaxAge &&
+                        Stopwatch.GetTimestamp() - precaptureTimestamp <= precaptureMaxAge &&
                         captures.TrueForAll(x => x.Output.Precaptured))
                     {
+                        bitmap = TakePrecapturedBitmap(rectangle);
+
+                        if (bitmap != null)
+                        {
+                            DebugHelper.WriteLine("Screen capture: used the frame taken when the hotkey modifier was pressed.");
+                            return bitmap;
+                        }
+
                         bitmap = CreateBitmap(rectangle, covered);
 
                         foreach (OutputCapture capture in captures)
@@ -201,8 +233,10 @@ namespace ShareX.ScreenCaptureLib
                         return bitmap;
                     }
 
-                    // The staging textures are written below: the precaptured frame is gone.
+                    // The staging textures are written below: the precaptured frame is gone, and the windows listed
+                    // with it do not go with this frame.
                     ClearPrecapturedOutputs();
+                    PrecapturedWindowList.Discard();
 
                     // Duplicate every output first: only frames composed after this point are delivered.
                     foreach (OutputCapture capture in captures)
@@ -269,11 +303,159 @@ namespace ShareX.ScreenCaptureLib
                 return false;
             }
 
+            try
+            {
+                Interlocked.Exchange(ref precaptureState, PrecaptureNone);
+
+                if (!TakePrecaptureFrames(timeoutMilliseconds))
+                {
+                    return false;
+                }
+
+                precaptureTimestamp = Stopwatch.GetTimestamp();
+                precaptureMaxAge = AltPrecaptureMaxAge;
+                Volatile.Write(ref precaptureState, PrecaptureTaken);
+            }
+            finally
+            {
+                Monitor.Exit(sync);
+            }
+
+            // The key goes through now; the frame is read back meanwhile.
+            PostWorker(WmAppReadBack);
+            return true;
+        }
+
+        /// <summary>
+        /// Asks the worker thread to take a frame of every output now, for a capture hotkey whose modifier (Ctrl, Shift or
+        /// Win) was just pressed. Returns at once (keyboard hook thread). Does nothing while a frame is taken or kept.
+        /// </summary>
+        internal static void RequestPrecapture()
+        {
+            if (adapters == null || workerThreadId == 0 ||
+                Interlocked.CompareExchange(ref precaptureState, PrecapturePending, PrecaptureNone) != PrecaptureNone)
+            {
+                return;
+            }
+
+            precaptureSettled.Reset();
+
+            if (!PostWorker(WmAppPrecapture))
+            {
+                Interlocked.CompareExchange(ref precaptureState, PrecaptureNone, PrecapturePending);
+                precaptureSettled.Set();
+            }
+        }
+
+        // Worker thread.
+        private static void RunRequestedPrecapture()
+        {
+            bool listWindows = false;
+
+            try
+            {
+                lock (sync)
+                {
+                    int state = Volatile.Read(ref precaptureState);
+
+                    if (state != PrecapturePending && state != PrecapturePendingClaimed)
+                    {
+                        // Dropped before it was taken.
+                        return;
+                    }
+
+                    bool taken = false;
+
+                    try
+                    {
+                        taken = TakePrecaptureFrames(FrameWaitMilliseconds) && ReadBackPrecapture();
+                    }
+                    catch (Exception e)
+                    {
+                        DebugHelper.WriteException(e, "Desktop duplication precapture failed.");
+                        Reset();
+                    }
+
+                    if (taken)
+                    {
+                        precaptureTimestamp = Stopwatch.GetTimestamp();
+                        precaptureMaxAge = ModifierPrecaptureMaxAge;
+                        taken = Interlocked.CompareExchange(ref precaptureState, PrecaptureTaken, PrecapturePending) == PrecapturePending ||
+                            Interlocked.CompareExchange(ref precaptureState, PrecaptureClaimed, PrecapturePendingClaimed) == PrecapturePendingClaimed;
+                    }
+                    else
+                    {
+                        Interlocked.CompareExchange(ref precaptureState, PrecaptureNone, PrecapturePending);
+                        Interlocked.CompareExchange(ref precaptureState, PrecaptureNone, PrecapturePendingClaimed);
+                    }
+
+                    if (!taken)
+                    {
+                        ClearPrecapturedOutputs();
+                    }
+
+                    listWindows = taken;
+                }
+            }
+            finally
+            {
+                precaptureSettled.Set();
+            }
+
+            if (listWindows)
+            {
+                // After the frame is ready: a capture waiting for it does not wait for the list too.
+                PrecapturedWindowList.Prefetch();
+            }
+        }
+
+        // Worker thread, after a precapture on Alt.
+        private static void RunReadBack()
+        {
+            lock (sync)
+            {
+                int state = Volatile.Read(ref precaptureState);
+
+                if ((state == PrecaptureTaken || state == PrecaptureClaimed) && precapturedBitmap == null)
+                {
+                    try
+                    {
+                        // On failure the capture copies from the staging textures itself.
+                        ReadBackPrecapture();
+                    }
+                    catch (Exception e)
+                    {
+                        DebugHelper.WriteException(e, "Desktop duplication precapture read back failed.");
+                    }
+                }
+                else
+                {
+                    return;
+                }
+            }
+
+            PrecapturedWindowList.Prefetch();
+        }
+
+        // Worker thread, after a precapture was dropped: frees what it held.
+        private static void RunCleanup()
+        {
+            lock (sync)
+            {
+                if (Volatile.Read(ref precaptureState) == PrecaptureNone)
+                {
+                    ClearPrecapturedOutputs();
+                }
+            }
+        }
+
+        /// <summary>Under sync. Takes a frame of every output into the staging textures and marks them Precaptured.</summary>
+        private static bool TakePrecaptureFrames(int timeoutMilliseconds)
+        {
             List<OutputCapture> captures = new List<OutputCapture>();
 
             try
             {
-                Interlocked.Exchange(ref precaptureState, PrecaptureNone);
                 ClearPrecapturedOutputs();
 
                 if (adapters == null)
@@ -319,8 +501,6 @@ namespace ShareX.ScreenCaptureLib
                     capture.Output.Precaptured = true;
                 }
 
-                precaptureTimestamp = Stopwatch.GetTimestamp();
-                Volatile.Write(ref precaptureState, PrecaptureTaken);
                 return true;
             }
             catch (Exception e)
@@ -333,31 +513,147 @@ namespace ShareX.ScreenCaptureLib
             finally
             {
                 foreach (OutputCapture capture in captures) capture.Dispose();
-                Monitor.Exit(sync);
             }
+        }
+
+        /// <summary>Under sync. Reads the precaptured outputs back into <see cref="precapturedBitmap"/>.</summary>
+        private static bool ReadBackPrecapture()
+        {
+            if (adapters == null)
+            {
+                return false;
+            }
+
+            List<OutputCapture> outputs = new List<OutputCapture>();
+            Rectangle bounds = Rectangle.Empty;
+            long covered = 0;
+
+            foreach (AdapterState adapter in adapters)
+            {
+                foreach (OutputState output in adapter.Outputs)
+                {
+                    if (output.Precaptured && output.Staging != null)
+                    {
+                        outputs.Add(new OutputCapture { Adapter = adapter, Output = output, Intersection = output.Bounds });
+                        bounds = bounds.IsEmpty ? output.Bounds : Rectangle.Union(bounds, output.Bounds);
+                        covered += (long)output.Bounds.Width * output.Bounds.Height;
+                    }
+                }
+            }
+
+            if (outputs.Count == 0)
+            {
+                return false;
+            }
+
+            SKBitmap bitmap = spareBitmap;
+            spareBitmap = null;
+
+            if (bitmap == null || bitmap.Width != bounds.Width || bitmap.Height != bounds.Height)
+            {
+                bitmap?.Dispose();
+                bitmap = CreateBitmap(bounds, covered);
+            }
+            else if (covered < (long)bounds.Width * bounds.Height)
+            {
+                bitmap.Erase(SKColors.Black);
+            }
+
+            try
+            {
+                foreach (OutputCapture output in outputs)
+                {
+                    CopyFromStaging(output, bounds, bitmap);
+                }
+            }
+            catch
+            {
+                bitmap.Dispose();
+                throw;
+            }
+
+            precapturedBitmap = bitmap;
+            precapturedBounds = bounds;
+            return true;
+        }
+
+        /// <summary>
+        /// Under sync. Returns the precaptured bitmap for <paramref name="rectangle"/> (handed over when it is the whole
+        /// bitmap, copied otherwise), or null when there is none.
+        /// </summary>
+        private static SKBitmap TakePrecapturedBitmap(Rectangle rectangle)
+        {
+            SKBitmap source = precapturedBitmap;
+
+            if (source == null || !precapturedBounds.Contains(rectangle))
+            {
+                return null;
+            }
+
+            if (rectangle == precapturedBounds)
+            {
+                precapturedBitmap = null;
+                return source;
+            }
+
+            // Active monitor mode: one monitor of the precaptured screen.
+            SKBitmap bitmap = CreateBitmap(rectangle, (long)rectangle.Width * rectangle.Height);
+            byte* from = (byte*)source.GetPixels() + (long)(rectangle.Y - precapturedBounds.Y) * source.RowBytes +
+                (rectangle.X - precapturedBounds.X) * 4L;
+            byte* to = (byte*)bitmap.GetPixels();
+            long rowLength = rectangle.Width * 4L;
+
+            for (int y = 0; y < rectangle.Height; y++)
+            {
+                Buffer.MemoryCopy(from, to, rowLength, rowLength);
+                from += source.RowBytes;
+                to += bitmap.RowBytes;
+            }
+
+            return bitmap;
         }
 
         /// <summary>The capture hotkey was pressed: the precaptured frame, if any, is for the capture it starts.</summary>
         internal static void ClaimPrecapture()
         {
-            Interlocked.CompareExchange(ref precaptureState, PrecaptureClaimed, PrecaptureTaken);
+            if (Interlocked.CompareExchange(ref precaptureState, PrecaptureClaimed, PrecaptureTaken) != PrecaptureTaken)
+            {
+                Interlocked.CompareExchange(ref precaptureState, PrecapturePendingClaimed, PrecapturePending);
+            }
         }
 
         /// <summary>Something happened after the precapture that was not the capture hotkey (another key, modifier released).</summary>
         internal static void DiscardUnclaimedPrecapture()
         {
-            Interlocked.CompareExchange(ref precaptureState, PrecaptureNone, PrecaptureTaken);
+            if (Interlocked.CompareExchange(ref precaptureState, PrecaptureNone, PrecaptureTaken) == PrecaptureTaken ||
+                Interlocked.CompareExchange(ref precaptureState, PrecaptureNone, PrecapturePending) == PrecapturePending)
+            {
+                PrecapturedWindowList.Discard();
+                PostWorker(WmAppCleanup);
+            }
         }
 
         /// <summary>No capture will use the precaptured frame.</summary>
         internal static void DiscardPrecapture()
         {
-            Interlocked.Exchange(ref precaptureState, PrecaptureNone);
+            PrecapturedWindowList.Discard();
+
+            if (Interlocked.Exchange(ref precaptureState, PrecaptureNone) != PrecaptureNone)
+            {
+                PostWorker(WmAppCleanup);
+            }
         }
 
-        // Under sync.
+        // Under sync. The read back bitmap becomes the spare one.
         private static void ClearPrecapturedOutputs()
         {
+            if (precapturedBitmap != null)
+            {
+                spareBitmap?.Dispose();
+                spareBitmap = precapturedBitmap;
+                precapturedBitmap = null;
+            }
+
             if (adapters == null)
             {
                 return;
@@ -368,6 +664,121 @@ namespace ShareX.ScreenCaptureLib
                 foreach (OutputState output in adapter.Outputs) output.Precaptured = false;
             }
         }
+
+        private const uint WmAppPrecapture = 0x8001, WmAppReadBack = 0x8002, WmAppCleanup = 0x8003;
+        private const uint PmNoRemove = 0;
+        private static readonly object workerStartLock = new object();
+        private static Thread worker;
+
+        /// <summary>
+        /// Starts the thread that takes precaptures requested by the keyboard hook. It pumps messages, so it can make DWM
+        /// compose (<see cref="CompositionTrigger"/>).
+        /// </summary>
+        private static void StartWorker()
+        {
+            lock (workerStartLock)
+            {
+                if (worker != null)
+                {
+                    return;
+                }
+
+                using ManualResetEventSlim started = new ManualResetEventSlim();
+                worker = new Thread(() => RunWorker(started))
+                {
+                    Name = "ShareX screen precapture",
+                    IsBackground = true,
+                    // The frame must be ready before the user presses the key that follows the modifier.
+                    Priority = ThreadPriority.AboveNormal
+                };
+                worker.Start();
+                started.Wait(TimeSpan.FromSeconds(5));
+            }
+        }
+
+        private static void RunWorker(ManualResetEventSlim started)
+        {
+            Msg message;
+
+            try
+            {
+                CompositionTrigger.RegisterMessageThread();
+                // Creates the message queue, so posting to this thread works once it is started.
+                PeekMessageW(&message, IntPtr.Zero, 0, 0, PmNoRemove);
+                workerThreadId = GetCurrentThreadId();
+            }
+            finally
+            {
+                started.Set();
+            }
+
+            while (GetMessageW(&message, IntPtr.Zero, 0, 0) > 0)
+            {
+                try
+                {
+                    if (message.Hwnd == IntPtr.Zero && message.Message == WmAppPrecapture)
+                    {
+                        RunRequestedPrecapture();
+                    }
+                    else if (message.Hwnd == IntPtr.Zero && message.Message == WmAppReadBack)
+                    {
+                        RunReadBack();
+                    }
+                    else if (message.Hwnd == IntPtr.Zero && message.Message == WmAppCleanup)
+                    {
+                        RunCleanup();
+                    }
+                    else
+                    {
+                        TranslateMessage(&message);
+                        DispatchMessageW(&message);
+                    }
+                }
+                catch (Exception e)
+                {
+                    DebugHelper.WriteException(e, "Screen precapture thread error.");
+                }
+            }
+        }
+
+        private static bool PostWorker(uint message)
+        {
+            uint id = workerThreadId;
+            return id != 0 && PostThreadMessageW(id, message, IntPtr.Zero, IntPtr.Zero);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct Msg
+        {
+            public IntPtr Hwnd;
+            public uint Message;
+            public IntPtr WParam;
+            public IntPtr LParam;
+            public uint Time;
+            public int PointX;
+            public int PointY;
+        }
+
+        [LibraryImport("user32.dll")]
+        private static partial int GetMessageW(Msg* message, IntPtr hwnd, uint filterMin, uint filterMax);
+
+        [LibraryImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static partial bool PeekMessageW(Msg* message, IntPtr hwnd, uint filterMin, uint filterMax, uint remove);
+
+        [LibraryImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static partial bool TranslateMessage(Msg* message);
+
+        [LibraryImport("user32.dll")]
+        private static partial IntPtr DispatchMessageW(Msg* message);
+
+        [LibraryImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static partial bool PostThreadMessageW(uint threadId, uint message, IntPtr wParam, IntPtr lParam);
+
+        [LibraryImport("kernel32.dll")]
+        private static partial uint GetCurrentThreadId();
 
         private static SKBitmap CreateBitmap(Rectangle rectangle, long covered)
         {
@@ -637,6 +1048,10 @@ namespace ShareX.ScreenCaptureLib
         private static void Reset()
         {
             Interlocked.Exchange(ref precaptureState, PrecaptureNone);
+            precapturedBitmap?.Dispose();
+            precapturedBitmap = null;
+            spareBitmap?.Dispose();
+            spareBitmap = null;
 
             if (adapters != null)
             {

@@ -77,7 +77,7 @@ public static class RegionCaptureIntegration
         TaskCompletionSource<AvaloniaRegionCaptureResult?> completion =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        Dispatcher.UIThread.Post(async () =>
+        async void Run()
         {
             RegionCaptureWindow? window = null;
             bool requestAttached = false;
@@ -96,6 +96,7 @@ public static class RegionCaptureIntegration
 
                 ImageEditorIntegration.Initialize();
                 window = TakePrewarmedWindow();
+                PrecapturedWindowList.Configure(request.RegionCaptureOptions.DetectWindows, request.RegionCaptureOptions.DetectControls);
                 _activeCaptureWindow = window;
 
                 if (window != null)
@@ -149,12 +150,24 @@ public static class RegionCaptureIntegration
                 // Get the next window ready once the current capture flow has settled.
                 _ = Task.Delay(PrewarmDelayAfterCapture).ContinueWith(_ => PrepareWindow(), TaskScheduler.Default);
             }
-        });
+        }
+
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            // The hotkey message: attach the screenshot in this dispatcher job, so the next rendered frame shows the
+            // whole capture (a posted job can run after a render).
+            Run();
+        }
+        else
+        {
+            Dispatcher.UIThread.Post(Run);
+        }
 
         return completion.Task;
     }
 
-    private static readonly TimeSpan PrewarmDelayAfterCapture = TimeSpan.FromSeconds(1);
+    // Short: a capture started soon after the last one (Escape, then the hotkey again) still finds a prewarmed window.
+    private static readonly TimeSpan PrewarmDelayAfterCapture = TimeSpan.FromMilliseconds(100);
     private static RegionCaptureWindow? _activeCaptureWindow;
     private static bool _escapeGuardHooked;
     private static bool _captureInProgress;
@@ -250,7 +263,15 @@ public static class RegionCaptureIntegration
                 }
 
                 ImageEditorIntegration.Initialize();
-                _prewarmedWindow = RegionCaptureWindow.CreatePrewarmed(CaptureHelpers.GetScreenBounds(), _prewarmOptionsProvider?.Invoke());
+                RegionCapturePrewarmOptions? options = _prewarmOptionsProvider?.Invoke();
+
+                if (options != null)
+                {
+                    // What the precapture lists with its frame (see PrecapturedWindowList).
+                    PrecapturedWindowList.Configure(options.RegionCaptureOptions.DetectWindows, options.RegionCaptureOptions.DetectControls);
+                }
+
+                _prewarmedWindow = RegionCaptureWindow.CreatePrewarmed(CaptureHelpers.GetScreenBounds(), options);
             }
             catch (Exception ex)
             {
@@ -258,34 +279,6 @@ public static class RegionCaptureIntegration
                 _prewarmedWindow = null;
             }
         }, DispatcherPriority.Background);
-    }
-
-    /// <summary>
-    /// Shows the prewarmed overlay for <paramref name="captureBounds"/> as soon as the screenshot has been taken, before
-    /// the capture is attached to it: the dim layer and toolbars appear over the live desktop (identical to the
-    /// screenshot) right away. Never call it before the screenshot: a window appearing over other applications closes
-    /// their popups, menus and tooltips before the frame is composed.
-    /// </summary>
-    public static void ShowPrewarmedOverlay(Rectangle captureBounds)
-    {
-        void Show()
-        {
-            if (IsCancelRequested)
-            {
-                return;
-            }
-
-            _prewarmedWindow?.ShowEarly(captureBounds);
-        }
-
-        if (Dispatcher.UIThread.CheckAccess())
-        {
-            Show();
-        }
-        else
-        {
-            Dispatcher.UIThread.Invoke(Show);
-        }
     }
 
     /// <summary>Hides the prewarmed window again when a capture was aborted before the region capture started.</summary>

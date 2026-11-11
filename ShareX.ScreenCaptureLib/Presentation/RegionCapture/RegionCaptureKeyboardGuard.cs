@@ -74,6 +74,12 @@ namespace ShareX.ScreenCaptureLib.Presentation.RegionCapture;
 /// releasing Alt, drops it. Alt therefore reaches applications up to one refresh later.
 /// </para>
 /// <para>
+/// The first key down of Ctrl, Shift or Win, when a region capture hotkey uses it, asks for the same frame on a worker
+/// thread (DesktopDuplicationCapture.RequestPrecapture) without delaying the key, so the screenshot is ready when the
+/// hotkey key follows and the overlay can be shown in the next rendered frame. Releasing the modifier, or any other key,
+/// drops it the same way.
+/// </para>
+/// <para>
 /// The hook also runs the hotkeys Windows keeps for itself (<see cref="SetHookHotkeys"/>, Win+Shift+S) and lets them be
 /// recorded (<see cref="RecordWinShortcuts"/>): it sees their key before Windows does, so consuming it is enough.
 /// </para>
@@ -113,6 +119,9 @@ public static unsafe partial class RegionCaptureKeyboardGuard
     // A region capture hotkey uses Alt (and also Ctrl, which AltGr adds).
     private static volatile bool precaptureOnAlt;
     private static volatile bool precaptureOnAltGr;
+    // Ctrl, Shift and Win used by a region capture hotkey: their key down asks for a precapture in the background.
+    private static volatile int precaptureModifiers;
+    private static long hotkeyTimestamp;
 
     // Hotkeys Windows keeps for itself (Win+Shift+S...), handled here instead of RegisterHotKey.
     private static volatile HookHotkey[] hookHotkeys = [];
@@ -123,6 +132,8 @@ public static unsafe partial class RegionCaptureKeyboardGuard
     private static bool escapeDownConsumed;
     private static bool leftAltDown;
     private static bool rightAltDown;
+    // Ctrl, Shift and Win keys (left and right) currently down, to tell a first key down from its repeats.
+    private static int modifierKeysDown;
     private static IntPtr hook;
 
     private readonly record struct ArmingHotkey(int VirtualKey, Modifiers Modifiers);
@@ -213,8 +224,16 @@ public static unsafe partial class RegionCaptureKeyboardGuard
         ArmingHotkey[] list = hotkeys.Select(x => new ArmingHotkey(x.VirtualKey, x.Modifiers)).Distinct().ToArray();
         precaptureOnAlt = list.Any(x => x.Modifiers.HasFlag(Modifiers.Alt));
         precaptureOnAltGr = list.Any(x => x.Modifiers.HasFlag(Modifiers.Alt) && x.Modifiers.HasFlag(Modifiers.Control));
+        precaptureModifiers = (int)list.Aggregate(Modifiers.None, (all, x) => all | x.Modifiers) &
+            (int)(Modifiers.Control | Modifiers.Shift | Modifiers.Win);
         armingHotkeys = list;
     }
+
+    /// <summary>
+    /// When the key of the region capture hotkey of the current capture was pressed (Stopwatch timestamp), or 0 for a
+    /// capture not started with the keyboard. For latency logs.
+    /// </summary>
+    public static long HotkeyTimestamp => Volatile.Read(ref hotkeyTimestamp);
 
     /// <summary>
     /// The capture flow started (UI thread): confirms an arm made by the hotkey key press, keeping an Escape already
@@ -235,6 +254,7 @@ public static unsafe partial class RegionCaptureKeyboardGuard
             {
                 cancelRequested = false;
                 armedAt = Stopwatch.GetTimestamp();
+                hotkeyTimestamp = 0;
                 armed = true;
             }
 
@@ -256,6 +276,7 @@ public static unsafe partial class RegionCaptureKeyboardGuard
             {
                 armed = false;
                 cancelRequested = false;
+                hotkeyTimestamp = 0;
             }
 
             if (!confirmed)
@@ -274,6 +295,7 @@ public static unsafe partial class RegionCaptureKeyboardGuard
             armed = false;
             confirmed = false;
             cancelRequested = false;
+            hotkeyTimestamp = 0;
         }
 
         DesktopDuplicationCapture.DiscardPrecapture();
@@ -459,6 +481,12 @@ public static unsafe partial class RegionCaptureKeyboardGuard
             return false;
         }
 
+        if (IsModifierKey(virtualKey))
+        {
+            HandleModifier(virtualKey, keyDown);
+            return false;
+        }
+
         if (keyDown)
         {
             ArmingHotkey[] hotkeys = armingHotkeys;
@@ -472,7 +500,7 @@ public static unsafe partial class RegionCaptureKeyboardGuard
 
                     if (canArmFromKeyboard?.Invoke() != false)
                     {
-                        // The frame taken when Alt was pressed is the screenshot of the capture this key starts.
+                        // The frame taken when a modifier was pressed is the screenshot of the capture this key starts.
                         DesktopDuplicationCapture.ClaimPrecapture();
 
                         lock (stateLock)
@@ -488,6 +516,7 @@ public static unsafe partial class RegionCaptureKeyboardGuard
                                 cancelRequested = false;
                                 confirmed = false;
                                 armedAt = Stopwatch.GetTimestamp();
+                                hotkeyTimestamp = armedAt;
                                 armed = true;
                             }
                         }
@@ -614,6 +643,55 @@ public static unsafe partial class RegionCaptureKeyboardGuard
 
     private static bool IsModifierKey(int virtualKey) => virtualKey is VkShift or VkControl or VkMenu or VkLWin or VkRWin
         or VkLShift or VkRShift or VkLControl or VkRControl or VkLMenu or VkRMenu;
+
+    // Hook thread: Ctrl, Shift or Win. Never waits: the precapture is taken on another thread while the key goes through.
+    private static void HandleModifier(int virtualKey, bool keyDown)
+    {
+        (int keyBit, Modifiers modifier) = virtualKey switch
+        {
+            VkLControl or VkControl => (1, Modifiers.Control),
+            VkRControl => (2, Modifiers.Control),
+            VkLShift or VkShift => (4, Modifiers.Shift),
+            VkRShift => (8, Modifiers.Shift),
+            VkLWin => (16, Modifiers.Win),
+            _ => (32, Modifiers.Win)
+        };
+
+        if (!keyDown)
+        {
+            modifierKeysDown &= ~keyBit;
+
+            // Released without the hotkey key.
+            DesktopDuplicationCapture.DiscardUnclaimedPrecapture();
+            return;
+        }
+
+        bool repeat = (modifierKeysDown & keyBit) != 0;
+        modifierKeysDown |= keyBit;
+
+        if (repeat || (precaptureModifiers & (int)modifier) == 0)
+        {
+            return;
+        }
+
+        lock (stateLock)
+        {
+            if (armed && confirmed)
+            {
+                // A capture is open: the key is for it.
+                return;
+            }
+        }
+
+        if (canArmFromKeyboard?.Invoke() == false)
+        {
+            return;
+        }
+
+        // The user presses the hotkey key 50 ms or more after its modifier: by then the screenshot is ready, and the
+        // capture does not wait for DWM to compose a new frame.
+        DesktopDuplicationCapture.RequestPrecapture();
+    }
 
     // Hook thread, before the Alt key reaches any application.
     private static void HandleAlt(int virtualKey, bool keyDown)
